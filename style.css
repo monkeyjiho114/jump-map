@@ -284,12 +284,12 @@ html, body {
   font-size: 1.4rem;
 }
 
-/* Pause Button (visible during gameplay) */
+/* Pause Button (visible during gameplay) — left side to avoid HUD overlap */
 #pause-btn-touch {
   display: none;
   position: fixed;
   top: 12px;
-  right: 60px;
+  left: 60px;
   z-index: 7;
   width: 44px;
   height: 44px;
@@ -486,7 +486,7 @@ html, body {
   /* Pause button in landscape */
   #pause-btn-touch.visible {
     top: 8px;
-    right: 50px;
+    left: 50px;
     width: 38px;
     height: 38px;
     font-size: 1.2rem;
@@ -590,5 +590,238 @@ html, body {
   }
   .character-card canvas {
     height: 90px;
+  }
+}
+
+/* =============================================
+   QUIZ SCREEN
+   ============================================= */
+#quiz-screen {
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 10;
+}
+
+.quiz-content {
+  max-width: 480px;
+  padding: 30px 35px;
+}
+
+.quiz-emoji {
+  font-size: 4rem;
+  margin-bottom: 10px;
+  line-height: 1.2;
+  animation: quizBounce 1s ease-in-out infinite alternate;
+}
+
+@keyframes quizBounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-8px); }
+}
+
+.quiz-question {
+  font-size: 1.3rem;
+  color: #fff;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.quiz-english {
+  color: #FFD700;
+  font-size: 1.8rem;
+  display: inline-block;
+  margin: 5px 0;
+}
+
+.quiz-korean {
+  color: #81D4FA;
+  font-size: 1.6rem;
+  display: inline-block;
+  margin: 5px 0;
+}
+
+.quiz-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.quiz-choice-btn {
+  padding: 12px 20px;
+  font-family: 'Jua', sans-serif;
+  font-size: 1.15rem;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.quiz-choice-btn:hover {
+  background: rgba(255, 152, 0, 0.3);
+  border-color: #FF9800;
+  transform: translateY(-2px);
+}
+
+.quiz-choice-btn:active {
+  transform: translateY(0);
+}
+
+.quiz-choice-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+
+.quiz-choice-correct {
+  background: rgba(76, 175, 80, 0.4) !important;
+  border-color: #4CAF50 !important;
+  opacity: 1 !important;
+}
+
+.quiz-mic-btn {
+  display: none;
+  margin: 10px auto;
+  padding: 14px 28px;
+  font-family: 'Jua', sans-serif;
+  font-size: 1.2rem;
+  border: 2px solid rgba(76, 175, 80, 0.6);
+  border-radius: 25px;
+  background: rgba(76, 175, 80, 0.25);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  justify-content: center;
+  align-items: center;
+}
+
+.quiz-mic-btn:hover {
+  background: rgba(76, 175, 80, 0.4);
+}
+
+.quiz-mic-btn.listening {
+  background: rgba(244, 67, 54, 0.4);
+  border-color: rgba(244, 67, 54, 0.8);
+  animation: micPulse 1s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(244, 67, 54, 0); }
+}
+
+.quiz-hint {
+  display: none;
+  margin-top: 10px;
+  padding: 8px 14px;
+  font-size: 0.95rem;
+  color: #FFE082;
+  background: rgba(255, 152, 0, 0.15);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.quiz-feedback {
+  margin-top: 12px;
+  font-size: 1.2rem;
+  min-height: 1.5em;
+  transition: all 0.3s ease;
+}
+
+.quiz-feedback-correct {
+  color: #4CAF50;
+  text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  animation: feedbackPop 0.4s ease;
+}
+
+.quiz-feedback-wrong {
+  color: #FF9800;
+  animation: feedbackShake 0.4s ease;
+}
+
+.quiz-feedback-answer {
+  color: #81D4FA;
+}
+
+.quiz-feedback-hint {
+  color: #FFE082;
+  font-size: 1rem;
+}
+
+@keyframes feedbackPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes feedbackShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* =============================================
+   QUIZ - Mobile Landscape
+   ============================================= */
+@media (max-height: 500px) and (orientation: landscape) {
+  .quiz-content {
+    padding: 15px 20px;
+    max-width: 420px;
+  }
+  .quiz-emoji {
+    font-size: 2.5rem;
+    margin-bottom: 5px;
+  }
+  .quiz-question {
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+  .quiz-english {
+    font-size: 1.3rem;
+  }
+  .quiz-korean {
+    font-size: 1.2rem;
+  }
+  .quiz-choices {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .quiz-choice-btn {
+    padding: 8px 14px;
+    font-size: 0.95rem;
+  }
+  .quiz-mic-btn {
+    padding: 8px 18px;
+    font-size: 1rem;
+  }
+  .quiz-feedback {
+    font-size: 1rem;
+    margin-top: 6px;
+  }
+}
+
+/* =============================================
+   QUIZ - Mobile Portrait
+   ============================================= */
+@media (max-width: 640px) and (orientation: portrait) {
+  .quiz-content {
+    max-width: 92vw;
+    padding: 25px 20px;
+  }
+  .quiz-emoji {
+    font-size: 3.5rem;
+  }
+  .quiz-choice-btn {
+    padding: 14px 18px;
+    font-size: 1.1rem;
+  }
+  .quiz-mic-btn {
+    padding: 14px 24px;
+    font-size: 1.15rem;
+    width: 80%;
   }
 }

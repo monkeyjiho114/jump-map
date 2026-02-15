@@ -107,6 +107,18 @@
     </div>
   </div>
 
+  <!-- Quiz Screen -->
+  <div id="quiz-screen" class="screen">
+    <div class="screen-content quiz-content">
+      <div id="quiz-emoji" class="quiz-emoji"></div>
+      <div id="quiz-question" class="quiz-question"></div>
+      <div id="quiz-choices" class="quiz-choices"></div>
+      <button id="quiz-mic-btn" class="quiz-mic-btn">🎤 말하기</button>
+      <div id="quiz-hint" class="quiz-hint"></div>
+      <div id="quiz-feedback" class="quiz-feedback"></div>
+    </div>
+  </div>
+
   <!-- Pause Button (always visible during gameplay) -->
   <button id="pause-btn-touch" aria-label="메뉴">☰</button>
 
@@ -123,6 +135,12 @@
   <!-- Game Container -->
   <div id="game-container"></div>
 
+  <script src="sound.js"></script>
+  <script src="characters.js"></script>
+  <script src="levels.js"></script>
+  <script src="input.js"></script>
+  <script src="quiz-data.js"></script>
+  <script src="quiz-manager.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
