@@ -1617,6 +1617,32 @@ class Game {
       this._goToMenu();
     });
 
+    // Pause button (☰) for mobile & desktop
+    const pauseBtn = document.getElementById('pause-btn-touch');
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.state === GameState.PLAYING) {
+          this._transitionState(GameState.PAUSED);
+        } else if (this.state === GameState.PAUSED) {
+          this._transitionState(GameState.PLAYING);
+        }
+      });
+    }
+
+    // Mobile back button → pause/resume (uses history API)
+    window.history.replaceState({ game: true }, '');
+    window.addEventListener('popstate', (e) => {
+      // Push state back so back button keeps working
+      window.history.pushState({ game: true }, '');
+      if (this.state === GameState.PLAYING) {
+        this._transitionState(GameState.PAUSED);
+      } else if (this.state === GameState.PAUSED) {
+        this._transitionState(GameState.PLAYING);
+      }
+    });
+
     // Keyboard menu navigation
     this._menuIndex = 0;
     this._menuButtons = [];
@@ -1696,6 +1722,18 @@ class Game {
 
     if (newState === GameState.PLAYING) {
       document.getElementById('hud').classList.add('active');
+      // Push history state so mobile back button works
+      window.history.pushState({ game: true }, '');
+    }
+
+    // Show/hide pause button: visible during PLAYING and PAUSED
+    const pauseBtn = document.getElementById('pause-btn-touch');
+    if (pauseBtn) {
+      if (newState === GameState.PLAYING || newState === GameState.PAUSED) {
+        pauseBtn.classList.add('visible');
+      } else {
+        pauseBtn.classList.remove('visible');
+      }
     }
 
     if (newState === GameState.CHARACTER_SELECT) {

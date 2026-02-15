@@ -1,0 +1,18 @@
+{
+  "name": "붕어빵 점프맵",
+  "short_name": "붕어빵점프",
+  "description": "3D 붕어빵 점프맵 게임",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#FF9800",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

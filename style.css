@@ -284,6 +284,40 @@ html, body {
   font-size: 1.4rem;
 }
 
+/* Pause Button (visible during gameplay) */
+#pause-btn-touch {
+  display: none;
+  position: fixed;
+  top: 12px;
+  right: 60px;
+  z-index: 7;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 1.4rem;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  line-height: 1;
+  padding: 0;
+}
+
+#pause-btn-touch:active {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(0.92);
+}
+
+#pause-btn-touch.visible {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 /* Touch Controls */
 #touch-controls {
   display: none;
@@ -448,6 +482,14 @@ html, body {
     width: 80px;
     height: 80px;
     font-size: 0.9rem;
+  }
+  /* Pause button in landscape */
+  #pause-btn-touch.visible {
+    top: 8px;
+    right: 50px;
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
   }
   /* Pause menu compact */
   #pause-menu h2 {
