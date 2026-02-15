@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+Thumbs.db
+nul
+NVIDIA Corporation
+*.log
+start.bat
+.claude/
