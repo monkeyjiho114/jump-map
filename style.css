@@ -224,7 +224,7 @@ html, body {
 }
 
 .hud-top-right {
-  right: 15px;
+  right: 70px;
   text-align: right;
 }
 
@@ -284,13 +284,13 @@ html, body {
   font-size: 1.4rem;
 }
 
-/* Pause Button (visible during gameplay) — left side to avoid HUD overlap */
+/* Pause Button (visible during gameplay) — top-right, below HUD items */
 #pause-btn-touch {
   display: none;
   position: fixed;
-  top: 12px;
-  left: 60px;
-  z-index: 7;
+  top: 15px;
+  right: 15px;
+  z-index: 8;
   width: 44px;
   height: 44px;
   border-radius: 10px;
@@ -486,7 +486,7 @@ html, body {
   /* Pause button in landscape */
   #pause-btn-touch.visible {
     top: 8px;
-    left: 50px;
+    right: 10px;
     width: 38px;
     height: 38px;
     font-size: 1.2rem;
@@ -562,7 +562,7 @@ html, body {
     left: max(15px, env(safe-area-inset-left));
   }
   .hud-top-right {
-    right: max(15px, env(safe-area-inset-right));
+    right: max(70px, calc(55px + env(safe-area-inset-right)));
   }
   #joystick-area {
     left: max(20px, env(safe-area-inset-left));
@@ -673,6 +673,15 @@ html, body {
   opacity: 0.5;
   cursor: default;
   transform: none;
+}
+
+.quiz-choice-focused {
+  outline: 3px solid #FFD700;
+  outline-offset: 2px;
+  background: rgba(255, 152, 0, 0.25);
+  border-color: #FF9800;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
 }
 
 .quiz-choice-correct {

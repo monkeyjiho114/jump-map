@@ -6,6 +6,7 @@ class SpeechManager {
     this.ttsSupported = 'speechSynthesis' in window;
     this.sttSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
     this._recognition = null;
+    this._sttTimeout = null;
   }
 
   speak(text, onEnd) {
@@ -20,11 +21,31 @@ class SpeechManager {
     utter.pitch = QUIZ_CONFIG.ttsPitch;
     utter.volume = 1.0;
     if (onEnd) utter.onend = onEnd;
+    // Chrome bug: speechSynthesis can get stuck, resume it
     window.speechSynthesis.speak(utter);
+    // Workaround for Chrome pausing long utterances
+    this._keepAlive();
+  }
+
+  _keepAlive() {
+    if (this._keepAliveTimer) clearInterval(this._keepAliveTimer);
+    this._keepAliveTimer = setInterval(() => {
+      if (!window.speechSynthesis.speaking) {
+        clearInterval(this._keepAliveTimer);
+        this._keepAliveTimer = null;
+      } else {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }
+    }, 5000);
   }
 
   stopSpeak() {
     if (this.ttsSupported) window.speechSynthesis.cancel();
+    if (this._keepAliveTimer) {
+      clearInterval(this._keepAliveTimer);
+      this._keepAliveTimer = null;
+    }
   }
 
   listen(onResult, onError) {
@@ -37,28 +58,66 @@ class SpeechManager {
     this._recognition = new SpeechRecognition();
     this._recognition.lang = QUIZ_CONFIG.sttLang;
     this._recognition.interimResults = false;
-    this._recognition.maxAlternatives = 5;
+    this._recognition.maxAlternatives = 10;
+    this._recognition.continuous = false;
+
+    let gotResult = false;
 
     this._recognition.onresult = (event) => {
+      gotResult = true;
+      this._clearSttTimeout();
       const results = [];
-      for (let i = 0; i < event.results[0].length; i++) {
-        results.push(event.results[0][i].transcript.toLowerCase().trim());
+      for (let i = 0; i < event.results.length; i++) {
+        for (let j = 0; j < event.results[i].length; j++) {
+          results.push(event.results[i][j].transcript.toLowerCase().trim());
+        }
       }
       if (onResult) onResult(results);
     };
 
     this._recognition.onerror = (event) => {
-      if (onError) onError(event.error);
+      this._clearSttTimeout();
+      // 'no-speech' and 'aborted' are common non-critical errors
+      if (event.error === 'no-speech' || event.error === 'aborted') {
+        if (onError) onError('no-speech');
+      } else {
+        if (onError) onError(event.error);
+      }
     };
 
     this._recognition.onend = () => {
+      this._clearSttTimeout();
       this._recognition = null;
+      // If ended without result and no error, treat as no-speech
+      if (!gotResult && onError) {
+        onError('no-speech');
+      }
     };
 
-    this._recognition.start();
+    try {
+      this._recognition.start();
+    } catch (e) {
+      if (onError) onError('start-failed');
+      return;
+    }
+
+    // Auto-timeout after 7 seconds of no result
+    this._sttTimeout = setTimeout(() => {
+      if (this._recognition && !gotResult) {
+        try { this._recognition.stop(); } catch (e) { /* ignore */ }
+      }
+    }, 7000);
+  }
+
+  _clearSttTimeout() {
+    if (this._sttTimeout) {
+      clearTimeout(this._sttTimeout);
+      this._sttTimeout = null;
+    }
   }
 
   stopListen() {
+    this._clearSttTimeout();
     if (this._recognition) {
       try { this._recognition.stop(); } catch (e) { /* ignore */ }
       this._recognition = null;
@@ -70,9 +129,13 @@ class SpeechManager {
     for (const recognized of recognizedTexts) {
       const clean = recognized.toLowerCase().replace(/[^a-z\s]/g, '').trim();
       for (const accepted of acceptedList) {
-        if (clean === accepted.toLowerCase()) return true;
+        const cleanAccepted = accepted.toLowerCase().trim();
+        // Exact match
+        if (clean === cleanAccepted) return true;
+        // Contains match (for short words in longer phrases)
+        if (clean.includes(cleanAccepted) || cleanAccepted.includes(clean)) return true;
         // Levenshtein-like: allow 1~2 char difference for short words
-        if (this._similarEnough(clean, accepted.toLowerCase())) return true;
+        if (this._similarEnough(clean, cleanAccepted)) return true;
       }
     }
     return false;
@@ -108,10 +171,14 @@ class QuizManager {
     this.speech = new SpeechManager();
     this.currentQuiz = null;
     this.attempts = 0;
-    this.quizIndex = 0;       // 현재 레벨에서 몇 번째 퀴즈인지
+    this.quizIndex = 0;
     this.levelIndex = 0;
-    this.onComplete = null;   // 퀴즈 완료 시 콜백
+    this.onComplete = null;
     this.isActive = false;
+
+    // 키보드 네비게이션
+    this._selectedChoiceIndex = 0;
+    this._choiceButtons = [];
 
     // DOM 요소 캐시
     this.screen = document.getElementById('quiz-screen');
@@ -123,6 +190,7 @@ class QuizManager {
     this.feedbackEl = document.getElementById('quiz-feedback');
 
     this._setupMicButton();
+    this._setupKeyboard();
   }
 
   _setupMicButton() {
@@ -133,20 +201,57 @@ class QuizManager {
     });
   }
 
-  // 레벨 전환 시 초기화
+  _setupKeyboard() {
+    document.addEventListener('keydown', (e) => {
+      if (!this.isActive || !this.currentQuiz) return;
+
+      const choiceCount = this._choiceButtons.length;
+      if (choiceCount === 0) return;
+
+      if (e.code === 'ArrowDown' || e.code === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        this._selectedChoiceIndex = (this._selectedChoiceIndex + 1) % choiceCount;
+        this._updateChoiceFocus();
+        soundManager.playMenuMove();
+      } else if (e.code === 'ArrowUp' || e.code === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        this._selectedChoiceIndex = (this._selectedChoiceIndex - 1 + choiceCount) % choiceCount;
+        this._updateChoiceFocus();
+        soundManager.playMenuMove();
+      } else if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this._choiceButtons[this._selectedChoiceIndex] && !this._choiceButtons[this._selectedChoiceIndex].disabled) {
+          this._checkAnswer(this._selectedChoiceIndex);
+        }
+      }
+    });
+  }
+
+  _updateChoiceFocus() {
+    this._choiceButtons.forEach((btn, idx) => {
+      if (idx === this._selectedChoiceIndex) {
+        btn.classList.add('quiz-choice-focused');
+      } else {
+        btn.classList.remove('quiz-choice-focused');
+      }
+    });
+  }
+
   resetForLevel(levelIndex) {
     this.levelIndex = levelIndex;
     this.quizIndex = 0;
     this.currentQuiz = null;
     this.attempts = 0;
     this.isActive = false;
+    this._selectedChoiceIndex = 0;
+    this._choiceButtons = [];
     this.speech.stopSpeak();
     this.speech.stopListen();
   }
 
-  // 체크포인트 도달 시 퀴즈 트리거
-  // checkpointIndex: 이 레벨에서 몇 번째 체크포인트인지 (0-based)
-  // onComplete: 퀴즈 완료 시 호출될 콜백
   triggerQuiz(checkpointIndex, onComplete) {
     const levelData = QUIZ_DATA.levels[this.levelIndex % QUIZ_DATA.levels.length];
     if (!levelData || !levelData.quizzes) {
@@ -164,6 +269,7 @@ class QuizManager {
     this.attempts = 0;
     this.onComplete = onComplete;
     this.isActive = true;
+    this._selectedChoiceIndex = 0;
 
     this._renderQuiz();
     return true;
@@ -195,6 +301,7 @@ class QuizManager {
     }
 
     // 선택지 버튼 생성
+    this._choiceButtons = [];
     if (this.choicesEl) {
       this.choicesEl.innerHTML = '';
       quiz.choices.forEach((choice, idx) => {
@@ -203,13 +310,19 @@ class QuizManager {
         btn.textContent = choice;
         btn.addEventListener('click', () => this._checkAnswer(idx));
         this.choicesEl.appendChild(btn);
+        this._choiceButtons.push(btn);
       });
+      // 첫 번째 선택지에 포커스
+      this._selectedChoiceIndex = 0;
+      this._updateChoiceFocus();
     }
 
     // 마이크 버튼: listen_and_repeat 타입 + STT 지원 시만 표시
     if (this.micBtn) {
       const showMic = (quiz.type === 'listen_and_repeat') && this.speech.sttSupported;
       this.micBtn.style.display = showMic ? 'flex' : 'none';
+      this.micBtn.textContent = '🎤 말하기';
+      this.micBtn.classList.remove('listening');
     }
 
     // 힌트/피드백 초기화
@@ -240,16 +353,27 @@ class QuizManager {
           this._onCorrect();
         } else {
           this._onIncorrect();
+          // STT가 인식은 했지만 틀린 경우 피드백에 인식 결과 표시
+          if (this.feedbackEl && results.length > 0) {
+            const heard = results[0];
+            this.feedbackEl.textContent = `"${heard}" 라고 들렸어요. 다시 해볼까요? 💪`;
+            this.feedbackEl.className = 'quiz-feedback quiz-feedback-wrong';
+          }
         }
       },
       (error) => {
         if (this.micBtn) {
           this.micBtn.classList.remove('listening');
-          this.micBtn.textContent = '🎤 말하기';
+          this.micBtn.textContent = '🎤 다시 말하기';
         }
-        // STT 에러 시 선택지로 대답하도록 안내
         if (this.feedbackEl) {
-          this.feedbackEl.textContent = '목소리가 잘 안 들렸어요. 버튼을 눌러보세요!';
+          if (error === 'no-speech') {
+            this.feedbackEl.textContent = '소리가 안 들렸어요. 🎤 버튼을 누르고 말해보세요!';
+          } else if (error === 'not-allowed') {
+            this.feedbackEl.textContent = '마이크 사용을 허용해주세요! 아니면 버튼을 눌러 답해보세요.';
+          } else {
+            this.feedbackEl.textContent = '다시 한번 시도해보세요! 버튼으로도 답할 수 있어요.';
+          }
           this.feedbackEl.className = 'quiz-feedback quiz-feedback-hint';
         }
       }
@@ -270,6 +394,14 @@ class QuizManager {
     this.isActive = false;
     this.speech.stopListen();
 
+    // 정답 선택지 하이라이트
+    this._choiceButtons.forEach((btn, idx) => {
+      btn.disabled = true;
+      if (idx === this.currentQuiz.correctIndex) {
+        btn.classList.add('quiz-choice-correct');
+      }
+    });
+
     // 피드백
     const praises = ['잘했어요! 🎉', '정답이에요! ⭐', '대단해요! 🌟', '멋져요! 🏆'];
     const praise = praises[Math.floor(Math.random() * praises.length)];
@@ -279,12 +411,9 @@ class QuizManager {
       this.feedbackEl.className = 'quiz-feedback quiz-feedback-correct';
     }
 
-    // 정답 효과음
     soundManager.playQuizCorrect();
 
-    // TTS 칭찬
     this.speech.speak('Great job!', () => {
-      // 딜레이 후 게임 복귀
       setTimeout(() => {
         if (this.onComplete) this.onComplete();
       }, QUIZ_CONFIG.correctDelay);
@@ -302,16 +431,12 @@ class QuizManager {
         this.feedbackEl.className = 'quiz-feedback quiz-feedback-answer';
       }
 
-      // 정답 선택지 하이라이트
-      if (this.choicesEl) {
-        const btns = this.choicesEl.querySelectorAll('.quiz-choice-btn');
-        btns.forEach((btn, idx) => {
-          btn.disabled = true;
-          if (idx === this.currentQuiz.correctIndex) {
-            btn.classList.add('quiz-choice-correct');
-          }
-        });
-      }
+      this._choiceButtons.forEach((btn, idx) => {
+        btn.disabled = true;
+        if (idx === this.currentQuiz.correctIndex) {
+          btn.classList.add('quiz-choice-correct');
+        }
+      });
 
       this.speech.speak(this.currentQuiz.english, () => {
         setTimeout(() => {
