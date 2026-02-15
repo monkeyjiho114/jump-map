@@ -329,8 +329,16 @@ class QuizManager {
     if (this.hintEl) { this.hintEl.textContent = ''; this.hintEl.style.display = 'none'; }
     if (this.feedbackEl) { this.feedbackEl.textContent = ''; this.feedbackEl.className = 'quiz-feedback'; }
 
-    // TTS로 영어 읽어주기
-    this.speech.speak(quiz.english);
+    // TTS로 영어 읽어주기 → listen_and_repeat이면 TTS 끝난 후 자동으로 듣기 시작
+    const autoListen = (quiz.type === 'listen_and_repeat') && this.speech.sttSupported;
+    this.speech.speak(quiz.english, () => {
+      if (autoListen && this.isActive) {
+        // TTS 끝나고 잠시 후 자동 듣기 시작
+        setTimeout(() => {
+          if (this.isActive) this._startListening();
+        }, 300);
+      }
+    });
   }
 
   _startListening() {
