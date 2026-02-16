@@ -291,8 +291,8 @@ class Game {
     // 플랫폼 크기: 1 = 2.0배 크게, 10 = 0.7배 작게
     let platformSizeMultiplier = 2.0 - (d - 1) * 0.144;
 
-    // 이동 속도: 1 = 0.5배 느리게, 10 = 1.5배 빠르게
-    let movingSpeedMultiplier = 0.5 + (d - 1) * 0.111;
+    // 이동 속도: 1 = 0.3배 매우 느리게, 10 = 1.5배 빠르게
+    let movingSpeedMultiplier = 0.3 + (d - 1) * 0.133;
 
     // 소멸 플랫폼 보이는 시간: 1 = 3.0배 길게, 10 = 0.8배 짧게
     let disappearVisibleMul = 3.0 - (d - 1) * 0.244;

@@ -26,16 +26,18 @@ const QUIZ_CONFIG = {
 
   // 난이도별 퀴즈 설정 (7가지 스타일)
   difficultySettings: {
-    // 난이도 1-2: 단어/짧은 문장 따라하기 (실시간 색상 피드백)
+    // ═══════════════════════════════════════════════════════════════
+    // 스타일 1: 단어 따라하기 (난이도 1-2)
+    // ═══════════════════════════════════════════════════════════════
     1: {
       type: 'exact_repeat',
-      showEnglishInQuestion: true,
-      showKoreanInQuestion: true,
-      showKoreanInChoices: true,
-      showKoreanAfterCorrect: false,
+      showEnglishInQuestion: true,   // 문제에 영어 표시
+      showKoreanInQuestion: true,    // 문제에 한글 표시
+      showKoreanInChoices: true,     // 선택지에 한글 표시
+      showKoreanAfterCorrect: false, // 정답 후 한글 표시 (이미 표시되어 있음)
       maxAttempts: 3,
       choiceCount: 3,
-      useRealtimeColorFeedback: true,
+      useRealtimeColorFeedback: true,  // 실시간 색상 피드백
       showRecognizedText: false,
       hintAfterAttempts: 2,
     },
@@ -51,8 +53,22 @@ const QUIZ_CONFIG = {
       showRecognizedText: false,
       hintAfterAttempts: 2,
     },
-    // 난이도 3: 문장 따라하기 (실시간 색상 피드백)
+    // ═══════════════════════════════════════════════════════════════
+    // 스타일 2: 문장 따라하기 (난이도 3-4)
+    // ═══════════════════════════════════════════════════════════════
     3: {
+      type: 'exact_repeat',
+      showEnglishInQuestion: true,   // 문제에 영어 표시
+      showKoreanInQuestion: true,    // 문제에 한글 표시
+      showKoreanInChoices: true,     // 선택지에 한글 표시
+      showKoreanAfterCorrect: false,
+      maxAttempts: 3,
+      choiceCount: 3,
+      useRealtimeColorFeedback: true,  // 실시간 색상 피드백
+      showRecognizedText: false,
+      hintAfterAttempts: 2,
+    },
+    4: {
       type: 'exact_repeat',
       showEnglishInQuestion: true,
       showKoreanInQuestion: true,
@@ -64,50 +80,44 @@ const QUIZ_CONFIG = {
       showRecognizedText: false,
       hintAfterAttempts: 2,
     },
-    // 난이도 4: 한글→영어 단어 말하기 (발음 텍스트 표시)
-    4: {
+    // ═══════════════════════════════════════════════════════════════
+    // 스타일 3: 한글→영어 단어 (난이도 5)
+    // ═══════════════════════════════════════════════════════════════
+    5: {
       type: 'kr_to_en_speak',
-      showEnglishInQuestion: false,
-      showKoreanInQuestion: true,
-      showKoreanInChoices: false,
-      showKoreanAfterCorrect: true,
+      showEnglishInQuestion: false,  // 문제에 영어 숨김
+      showKoreanInQuestion: true,    // 문제에 한글만 표시
+      showKoreanInChoices: false,    // 선택지에 영어만 표시
+      showKoreanAfterCorrect: true,  // 정답 후 한글 표시
       maxAttempts: 3,
       choiceCount: 4,
       useRealtimeColorFeedback: false,
-      showRecognizedText: true,
+      showRecognizedText: true,      // 발음 텍스트 표시
       hintAfterAttempts: 2,
     },
-    // 난이도 5-6: 한글→영어 문장 말하기 (발음 텍스트 표시)
-    5: {
-      type: 'kr_to_en_speak',
-      showEnglishInQuestion: false,
-      showKoreanInQuestion: true,
-      showKoreanInChoices: false,
-      showKoreanAfterCorrect: true,
-      maxAttempts: 2,
-      choiceCount: 4,
-      useRealtimeColorFeedback: false,
-      showRecognizedText: true,
-      hintAfterAttempts: 1,
-    },
+    // ═══════════════════════════════════════════════════════════════
+    // 스타일 4: 한글→영어 문장 (난이도 6)
+    // ═══════════════════════════════════════════════════════════════
     6: {
       type: 'kr_to_en_speak',
-      showEnglishInQuestion: false,
-      showKoreanInQuestion: true,
-      showKoreanInChoices: false,
-      showKoreanAfterCorrect: true,
+      showEnglishInQuestion: false,  // 문제에 영어 숨김
+      showKoreanInQuestion: true,    // 문제에 한글만 표시
+      showKoreanInChoices: false,    // 선택지에 영어만 표시
+      showKoreanAfterCorrect: true,  // 정답 후 한글 표시
       maxAttempts: 2,
       choiceCount: 4,
       useRealtimeColorFeedback: false,
-      showRecognizedText: true,
+      showRecognizedText: true,      // 발음 텍스트 표시
       hintAfterAttempts: 1,
     },
-    // 난이도 7: 한글 상황 설명→영어 답변 (발음 텍스트 표시)
+    // ═══════════════════════════════════════════════════════════════
+    // 스타일 5: 한글 상황+영어 번역 → 영어 답변 (난이도 7)
+    // ═══════════════════════════════════════════════════════════════
     7: {
       type: 'situation_kr',
-      showEnglishInQuestion: true,
-      showKoreanInQuestion: true,
-      showKoreanInChoices: true,
+      showEnglishInQuestion: true,   // 문제에 영어 번역 표시
+      showKoreanInQuestion: true,    // 문제에 한글 상황 표시
+      showKoreanInChoices: true,     // 선택지에 영어+한글 표시
       showKoreanAfterCorrect: false,
       maxAttempts: 2,
       choiceCount: 4,
@@ -115,18 +125,20 @@ const QUIZ_CONFIG = {
       showRecognizedText: true,
       hintAfterAttempts: 1,
     },
-    // 난이도 8-9: 영어 상황 설명→영어 답변 (발음 텍스트 표시, 선택지 한글 O)
+    // ═══════════════════════════════════════════════════════════════
+    // 스타일 6: 영어 상황 → 영어 답변 (난이도 8-9)
+    // ═══════════════════════════════════════════════════════════════
     8: {
       type: 'situation_en',
-      showEnglishInQuestion: true,
-      showKoreanInQuestion: false,
-      showKoreanInChoices: true,
+      showEnglishInQuestion: true,   // 문제에 영어만 표시
+      showKoreanInQuestion: false,   // 문제에 한글 숨김
+      showKoreanInChoices: true,     // 선택지에 영어+한글 표시
       showKoreanAfterCorrect: false,
-      maxAttempts: 1,
+      maxAttempts: 2,
       choiceCount: 4,
       useRealtimeColorFeedback: false,
       showRecognizedText: true,
-      hintAfterAttempts: 0,
+      hintAfterAttempts: 1,
     },
     9: {
       type: 'situation_en',
@@ -135,18 +147,20 @@ const QUIZ_CONFIG = {
       showKoreanInChoices: true,
       showKoreanAfterCorrect: false,
       maxAttempts: 1,
-      choiceCount: 5,
+      choiceCount: 4,
       useRealtimeColorFeedback: false,
       showRecognizedText: true,
       hintAfterAttempts: 0,
     },
-    // 난이도 10: 영어 상황→영어 답변 (발음 텍스트 표시, 선택지 영어만)
+    // ═══════════════════════════════════════════════════════════════
+    // 스타일 7: 영어 상황 → 영어 답변 (고급, 난이도 10)
+    // ═══════════════════════════════════════════════════════════════
     10: {
       type: 'situation_en',
-      showEnglishInQuestion: true,
-      showKoreanInQuestion: false,
-      showKoreanInChoices: false,
-      showKoreanAfterCorrect: true,
+      showEnglishInQuestion: true,   // 문제에 영어만 표시
+      showKoreanInQuestion: false,   // 문제에 한글 숨김
+      showKoreanInChoices: false,    // 선택지에 영어만 표시
+      showKoreanAfterCorrect: true,  // 정답 후 한글 표시
       maxAttempts: 1,
       choiceCount: 5,
       useRealtimeColorFeedback: false,
