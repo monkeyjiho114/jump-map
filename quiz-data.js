@@ -26,18 +26,18 @@ const QUIZ_CONFIG = {
     10: { rate: 0.95, pitch: 1.00 },
   },
 
-  // 난이도별 퀴즈 유형 확률 분포 (STT가 기본, 높을수록 STT 비중 증가)
+  // 난이도별 퀴즈 유형 확률 분포 (모든 난이도에서 STT만 사용)
   typeDistribution: {
-    1:  { listen_and_repeat: 0.4,  word_en_to_kr: 0.3,  listen_and_choose: 0.2,  word_kr_to_en: 0.1  },
-    2:  { listen_and_repeat: 0.45, word_en_to_kr: 0.25, listen_and_choose: 0.2,  word_kr_to_en: 0.1  },
-    3:  { listen_and_repeat: 0.5,  word_en_to_kr: 0.2,  listen_and_choose: 0.2,  word_kr_to_en: 0.1  },
-    4:  { listen_and_repeat: 0.55, word_en_to_kr: 0.15, listen_and_choose: 0.15, word_kr_to_en: 0.15 },
-    5:  { listen_and_repeat: 0.6,  word_en_to_kr: 0.15, listen_and_choose: 0.15, word_kr_to_en: 0.1  },
-    6:  { listen_and_repeat: 0.7,  word_en_to_kr: 0.1,  listen_and_choose: 0.1,  word_kr_to_en: 0.1  },
-    7:  { listen_and_repeat: 0.75, word_en_to_kr: 0.1,  listen_and_choose: 0.1,  word_kr_to_en: 0.05 },
-    8:  { listen_and_repeat: 0.8,  word_en_to_kr: 0.05, listen_and_choose: 0.1,  word_kr_to_en: 0.05 },
-    9:  { listen_and_repeat: 0.9,  word_en_to_kr: 0.0,  listen_and_choose: 0.05, word_kr_to_en: 0.05 },
-    10: { listen_and_repeat: 1.0,  word_en_to_kr: 0.0,  listen_and_choose: 0.0,  word_kr_to_en: 0.0  },
+    1:  { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
+    2:  { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
+    3:  { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
+    4:  { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
+    5:  { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
+    6:  { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
+    7:  { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
+    8:  { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
+    9:  { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
+    10: { listen_and_repeat: 1.0, word_en_to_kr: 0.0, listen_and_choose: 0.0, word_kr_to_en: 0.0 },
   },
 };
 

@@ -37,6 +37,7 @@ class Game {
     // 난이도 설정 (1~10)
     this.gameDifficulty = 5;   // 기본 보통
     this.quizDifficulty = 3;   // 기본 쉬운 단어
+    this._difficultyFocusIndex = 0; // 0: 게임 난이도, 1: 퀴즈 난이도
 
     // 체크포인트별 퀴즈 완료 여부 추적
     this._checkpointQuizDone = [];
@@ -161,21 +162,61 @@ class Game {
       }
 
       if (this.state !== GameState.PLAYING && this.state !== GameState.QUIZ) {
-        if (e.code === 'ArrowDown' || e.code === 'ArrowRight') {
-          e.preventDefault();
-          this._menuIndex = (this._menuIndex + 1) % this._menuButtons.length;
-          this._updateMenuFocus();
-          soundManager.playMenuMove();
-        } else if (e.code === 'ArrowUp' || e.code === 'ArrowLeft') {
-          e.preventDefault();
-          this._menuIndex = (this._menuIndex - 1 + this._menuButtons.length) % this._menuButtons.length;
-          this._updateMenuFocus();
-          soundManager.playMenuMove();
-        } else if (e.code === 'Space' || e.code === 'Enter') {
-          e.preventDefault();
-          soundManager.init();
-          if (this._menuButtons[this._menuIndex]) {
-            this._menuButtons[this._menuIndex].click();
+        // 타이틀 화면: 난이도 선택 키보드 제어
+        if (this.state === GameState.TITLE) {
+          if (e.code === 'ArrowDown') {
+            e.preventDefault();
+            this._difficultyFocusIndex = (this._difficultyFocusIndex + 1) % 2;
+            this._updateDifficultyFocus();
+            soundManager.playMenuMove();
+          } else if (e.code === 'ArrowUp') {
+            e.preventDefault();
+            this._difficultyFocusIndex = (this._difficultyFocusIndex - 1 + 2) % 2;
+            this._updateDifficultyFocus();
+            soundManager.playMenuMove();
+          } else if (e.code === 'ArrowLeft') {
+            e.preventDefault();
+            if (this._difficultyFocusIndex === 0) {
+              this.gameDifficulty = Math.max(1, this.gameDifficulty - 1);
+              this._updateDifficultyDisplay('game', this.gameDifficulty);
+            } else {
+              this.quizDifficulty = Math.max(1, this.quizDifficulty - 1);
+              this._updateDifficultyDisplay('quiz', this.quizDifficulty);
+            }
+            soundManager.playMenuMove();
+          } else if (e.code === 'ArrowRight') {
+            e.preventDefault();
+            if (this._difficultyFocusIndex === 0) {
+              this.gameDifficulty = Math.min(10, this.gameDifficulty + 1);
+              this._updateDifficultyDisplay('game', this.gameDifficulty);
+            } else {
+              this.quizDifficulty = Math.min(10, this.quizDifficulty + 1);
+              this._updateDifficultyDisplay('quiz', this.quizDifficulty);
+            }
+            soundManager.playMenuMove();
+          } else if (e.code === 'Space' || e.code === 'Enter') {
+            e.preventDefault();
+            soundManager.init();
+            document.getElementById('start-btn').click();
+          }
+        } else {
+          // 다른 화면: 메뉴 버튼 네비게이션
+          if (e.code === 'ArrowDown' || e.code === 'ArrowRight') {
+            e.preventDefault();
+            this._menuIndex = (this._menuIndex + 1) % this._menuButtons.length;
+            this._updateMenuFocus();
+            soundManager.playMenuMove();
+          } else if (e.code === 'ArrowUp' || e.code === 'ArrowLeft') {
+            e.preventDefault();
+            this._menuIndex = (this._menuIndex - 1 + this._menuButtons.length) % this._menuButtons.length;
+            this._updateMenuFocus();
+            soundManager.playMenuMove();
+          } else if (e.code === 'Space' || e.code === 'Enter') {
+            e.preventDefault();
+            soundManager.init();
+            if (this._menuButtons[this._menuIndex]) {
+              this._menuButtons[this._menuIndex].click();
+            }
           }
         }
       }
@@ -227,6 +268,19 @@ class Game {
         descEl.textContent = quizDescs[level] || '기본 단어';
       }
     }
+  }
+
+  _updateDifficultyFocus() {
+    // 난이도 행에 포커스 표시
+    document.querySelectorAll('.difficulty-row').forEach((row, idx) => {
+      if (idx === this._difficultyFocusIndex) {
+        row.style.backgroundColor = 'rgba(255, 152, 0, 0.15)';
+        row.style.borderRadius = '8px';
+      } else {
+        row.style.backgroundColor = '';
+        row.style.borderRadius = '';
+      }
+    });
   }
 
   _getDifficultyMultipliers() {
@@ -312,6 +366,8 @@ class Game {
 
     if (newState === GameState.TITLE) {
       soundManager.stopBGM();
+      this._difficultyFocusIndex = 0;
+      this._updateDifficultyFocus();
     }
 
     this._updateMenuButtons();

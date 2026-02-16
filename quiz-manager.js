@@ -368,7 +368,7 @@ class QuizManager {
           this.questionEl.innerHTML = `<span class="quiz-korean">${quiz.korean}</span><br>영어로 뭐라고 할까요?`;
           break;
         case 'listen_and_repeat':
-          this.questionEl.innerHTML = `잘 듣고 따라 말해보세요!<br><span class="quiz-english">${quiz.english}</span>`;
+          this.questionEl.innerHTML = `잘 듣고 따라 말해보세요!<br><span class="quiz-english">${quiz.english}</span><br><span class="quiz-korean">(${quiz.korean})</span>`;
           break;
         case 'listen_and_choose':
           this.questionEl.innerHTML = `잘 듣고 맞는 것을 골라보세요!`;
