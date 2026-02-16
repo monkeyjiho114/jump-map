@@ -10,21 +10,36 @@ class SpeechManager {
   }
 
   speak(text, onEnd, rate, pitch) {
+    if (this._ttsTimeout) { clearTimeout(this._ttsTimeout); this._ttsTimeout = null; }
     if (!this.ttsSupported) {
       if (onEnd) onEnd();
       return;
     }
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = QUIZ_CONFIG.sttLang; // ttsLang은 sttLang과 동일
+    utter.lang = QUIZ_CONFIG.sttLang;
     utter.rate = rate !== undefined ? rate : 0.85;
     utter.pitch = pitch !== undefined ? pitch : 1.1;
     utter.volume = 1.0;
-    if (onEnd) utter.onend = onEnd;
-    // Chrome bug: speechSynthesis can get stuck, resume it
+
+    let called = false;
+    const safeOnEnd = () => {
+      if (called) return;
+      called = true;
+      if (this._ttsTimeout) { clearTimeout(this._ttsTimeout); this._ttsTimeout = null; }
+      if (onEnd) onEnd();
+    };
+
+    utter.onend = safeOnEnd;
+    utter.onerror = safeOnEnd;
     window.speechSynthesis.speak(utter);
-    // Workaround for Chrome pausing long utterances
     this._keepAlive();
+
+    // Safety timeout: TTS onend can silently fail (Chrome bug)
+    if (onEnd) {
+      const timeout = Math.max(5000, text.length * 200);
+      this._ttsTimeout = setTimeout(safeOnEnd, timeout);
+    }
   }
 
   _keepAlive() {
@@ -45,6 +60,10 @@ class SpeechManager {
     if (this._keepAliveTimer) {
       clearInterval(this._keepAliveTimer);
       this._keepAliveTimer = null;
+    }
+    if (this._ttsTimeout) {
+      clearTimeout(this._ttsTimeout);
+      this._ttsTimeout = null;
     }
   }
 
@@ -206,6 +225,7 @@ class QuizManager {
 
     this._setupMicButton();
     this._setupKeyboard();
+    this._setupSkipButton();
   }
 
   _setupMicButton() {
@@ -214,6 +234,26 @@ class QuizManager {
       if (!this.currentQuiz || !this.isActive) return;
       this._startListening();
     });
+  }
+
+  _setupSkipButton() {
+    this.skipBtn = document.getElementById('quiz-skip-btn');
+    if (!this.skipBtn) return;
+    this.skipBtn.addEventListener('click', () => {
+      this.forceComplete();
+    });
+  }
+
+  forceComplete() {
+    if (!this.currentQuiz && !this.onComplete) return;
+    this.isActive = false;
+    this.speech.stopSpeak();
+    this.speech.stopListen();
+    if (this.onComplete) {
+      const cb = this.onComplete;
+      this.onComplete = null;
+      cb();
+    }
   }
 
   _setupKeyboard() {

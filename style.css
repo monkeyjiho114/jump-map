@@ -816,6 +816,30 @@ html, body {
   50% { box-shadow: 0 0 0 12px rgba(244, 67, 54, 0); }
 }
 
+.quiz-skip-btn {
+  display: block;
+  margin: 12px auto 0;
+  padding: 8px 20px;
+  font-family: 'Jua', sans-serif;
+  font-size: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.quiz-skip-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.quiz-skip-btn:active {
+  transform: scale(0.95);
+}
+
 .quiz-hint {
   display: none;
   margin-top: 10px;
