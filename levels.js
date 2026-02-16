@@ -355,6 +355,16 @@ class StaticPlatform {
         star._phase = i;
         this._stars.push(star);
       }
+
+      // Ingredient model above finish platform
+      if (def.stageIndex !== undefined && typeof INGREDIENTS !== 'undefined') {
+        const ingredientData = INGREDIENTS[def.stageIndex];
+        if (ingredientData) {
+          this.ingredientModel = createIngredientModel(ingredientData);
+          this.ingredientModel.position.set(def.pos[0], def.pos[1] + 4.0, def.pos[2]);
+          this._ingredientBaseY = def.pos[1] + 4.0;
+        }
+      }
     }
 
     // Checkpoint marker
@@ -385,6 +395,7 @@ class StaticPlatform {
     scene.add(this.edge);
     if (this.glow) scene.add(this.glow);
     if (this._stars) this._stars.forEach(s => scene.add(s));
+    if (this.ingredientModel) scene.add(this.ingredientModel);
     if (this.flagPole) {
       scene.add(this.flagPole);
       scene.add(this.flag);
@@ -398,6 +409,7 @@ class StaticPlatform {
     scene.remove(this.edge);
     if (this.glow) scene.remove(this.glow);
     if (this._stars) this._stars.forEach(s => scene.remove(s));
+    if (this.ingredientModel) scene.remove(this.ingredientModel);
     if (this.flagPole) {
       scene.remove(this.flagPole);
       scene.remove(this.flag);
@@ -426,6 +438,13 @@ class StaticPlatform {
     }
     if (this.flag) {
       this.flag.rotation.y = Math.sin(time * 3) * 0.25;
+    }
+    if (this.ingredientModel) {
+      this.ingredientModel.rotation.y = time * 1.5;
+      this.ingredientModel.position.y = this._ingredientBaseY + Math.sin(time * 2) * 0.5;
+      // Glow pulse (child[1] is glow sphere)
+      const glowMesh = this.ingredientModel.children[1];
+      if (glowMesh) glowMesh.material.opacity = 0.1 + Math.sin(time * 3) * 0.06;
     }
   }
 }

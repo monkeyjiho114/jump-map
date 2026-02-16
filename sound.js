@@ -116,6 +116,14 @@ class SoundManager {
     this._playTone(200, 0.35, 'sawtooth', this.sfxGain, 0.2, 0.1);
   }
 
+  playIngredientCollect() {
+    const notes = [784, 988, 1175, 1319, 1568, 1760];
+    notes.forEach((f, i) => {
+      this._playTone(f, 0.25, 'sine', this.sfxGain, 0.2, i * 0.06);
+    });
+    this._playTone(262, 0.8, 'triangle', this.sfxGain, 0.15, 0);
+  }
+
   playClear() {
     const notes = [523, 659, 784, 1047, 1319, 1568];
     notes.forEach((f, i) => {

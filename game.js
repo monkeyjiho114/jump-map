@@ -33,6 +33,7 @@ class Game {
     this.totalDeaths = 0;
     this.totalTime = 0;
     this.respawnFlashTimer = 0;
+    this.collectedIngredients = [];
 
     // 난이도 설정 (1~10)
     this.gameDifficulty = 5;   // 기본 보통
@@ -366,6 +367,17 @@ class Game {
     if (newState === GameState.STAGE_CLEAR) {
       document.getElementById('clear-time').textContent = this.hud.formatTime(this.hud.elapsed);
       document.getElementById('clear-deaths').textContent = this.hud.deaths;
+      // Show new ingredient
+      const newIngEl = document.getElementById('clear-new-ingredient');
+      if (newIngEl && typeof INGREDIENTS !== 'undefined') {
+        const ing = INGREDIENTS[this.currentLevelIndex];
+        if (ing) {
+          newIngEl.innerHTML = '<span class="ingredient-new-emoji">' + ing.emoji + '</span>' +
+            '<span class="ingredient-new-name">' + ing.name + ' 획득!</span>' +
+            '<span class="ingredient-new-desc">' + ing.desc + '</span>';
+        }
+      }
+      this._updateIngredientUI('stage-clear-ingredients', this.collectedIngredients);
       soundManager.playClear();
       soundManager.stopBGM();
     }
@@ -373,6 +385,7 @@ class Game {
     if (newState === GameState.ALL_CLEAR) {
       document.getElementById('total-time').textContent = this.hud.formatTime(this.totalTime);
       document.getElementById('total-deaths').textContent = this.totalDeaths;
+      this._updateIngredientUI('all-clear-ingredients', this.collectedIngredients);
       soundManager.playClear();
       soundManager.stopBGM();
     }
@@ -390,6 +403,7 @@ class Game {
     this.characterType = type;
     this.totalDeaths = 0;
     this.totalTime = 0;
+    this.collectedIngredients = [];
 
     if (this.characterModel) this.scene.remove(this.characterModel);
     this.characterModel = createCharacterModel(type);
@@ -453,6 +467,11 @@ class Game {
       // Clone platform definition and apply difficulty scaling
       const adjustedDef = { ...def };
 
+      // Pass stage index to finish platform for ingredient model
+      if (def.isFinish) {
+        adjustedDef.stageIndex = index;
+      }
+
       // Apply size multiplier (size: [width, height, depth])
       // 플랫폼이 커지면 자동으로 간격이 좁아지는 효과
       adjustedDef.size = [
@@ -511,6 +530,7 @@ class Game {
     this.hud.reset();
     this.hud.setStage(levelDef.name);
     this.hud.setCheckpoint(0, checkpointCount);
+    this._updateHUDIngredients();
 
     // Spawn
     const startPlatform = this.platforms.find(p => p.isStart);
@@ -583,6 +603,12 @@ class Game {
       this.totalTime += this.hud.elapsed;
       this.totalDeaths += this.hud.deaths;
 
+      // Collect ingredient
+      if (!this.collectedIngredients.includes(this.currentLevelIndex)) {
+        this.collectedIngredients.push(this.currentLevelIndex);
+        soundManager.playIngredientCollect();
+      }
+
       if (this.currentLevelIndex + 1 < LEVELS.length) {
         this._transitionState(GameState.STAGE_CLEAR);
       } else {
@@ -634,6 +660,48 @@ class Game {
       }
     }
     this.hud.setCheckpoint(activatedCount, totalCount);
+  }
+
+  _updateIngredientUI(containerId, collected) {
+    const container = document.getElementById(containerId);
+    if (!container || typeof INGREDIENTS === 'undefined') return;
+    container.innerHTML = '';
+
+    INGREDIENTS.forEach((ingredient, idx) => {
+      const item = document.createElement('div');
+      item.className = 'ingredient-item';
+      const isCollected = collected.includes(idx);
+      item.classList.add(isCollected ? 'collected' : 'locked');
+
+      const emojiSpan = document.createElement('span');
+      emojiSpan.className = 'ingredient-emoji';
+      emojiSpan.textContent = isCollected ? ingredient.emoji : '❓';
+      item.appendChild(emojiSpan);
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'ingredient-name';
+      nameSpan.textContent = isCollected ? ingredient.name : '???';
+      item.appendChild(nameSpan);
+
+      container.appendChild(item);
+    });
+  }
+
+  _updateHUDIngredients() {
+    const container = document.getElementById('hud-ingredients');
+    if (!container || typeof INGREDIENTS === 'undefined') return;
+    container.innerHTML = '';
+
+    INGREDIENTS.forEach((ingredient, idx) => {
+      const dot = document.createElement('span');
+      dot.className = 'ingredient-dot';
+      const isCollected = this.collectedIngredients.includes(idx);
+      const isCurrent = idx === this.currentLevelIndex;
+      dot.textContent = isCollected ? ingredient.emoji : (isCurrent ? '⭐' : '·');
+      if (isCollected) dot.classList.add('collected');
+      if (isCurrent && !isCollected) dot.classList.add('current');
+      container.appendChild(dot);
+    });
   }
 
   _animate() {

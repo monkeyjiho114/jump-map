@@ -17,6 +17,7 @@ style.css       — 메뉴/HUD/터치 컨트롤/퀴즈/반응형 스타일
 sound.js        — CONFIG, GameState, SoundManager
 characters.js   — 캐릭터 모델 생성 (붕어빵 몸통, 돼지/원숭이 머리)
 levels.js       — LEVELS 데이터, 플랫폼 클래스, 환경 생성
+ingredients.js  — 두바이 쫀득 쿠키 재료 수집 시스템 (INGREDIENTS 데이터, 3D 모델 생성)
 input.js        — InputManager, ThirdPersonCamera, PhysicsController, HUDController
 quiz-data.js    — 영어 교육 퀴즈 콘텐츠 데이터 (확장 가능)
 quiz-manager.js — SpeechManager(TTS/STT), QuizManager
@@ -26,7 +27,7 @@ package.json    — 프로젝트 메타데이터
 ```
 
 ## 스크립트 로딩 순서
-three.min.js → sound.js → characters.js → levels.js → input.js → quiz-data.js → quiz-manager.js → game.js
+three.min.js → sound.js → characters.js → levels.js → ingredients.js → input.js → quiz-data.js → quiz-manager.js → game.js
 
 ## 핵심 규칙
 - 붕어빵 몸통 재질: MeshLambertMaterial (광택 없음)
