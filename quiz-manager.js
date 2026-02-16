@@ -48,7 +48,7 @@ class SpeechManager {
     }
   }
 
-  listen(onResult, onError) {
+  listen(onResult, onError, onInterim) {
     if (!this.sttSupported) {
       if (onError) onError('STT not supported');
       return;
@@ -57,22 +57,33 @@ class SpeechManager {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     this._recognition = new SpeechRecognition();
     this._recognition.lang = QUIZ_CONFIG.sttLang;
-    this._recognition.interimResults = false;
+    this._recognition.interimResults = true; // 실시간 결과 활성화
     this._recognition.maxAlternatives = 10;
     this._recognition.continuous = false;
 
     let gotResult = false;
 
     this._recognition.onresult = (event) => {
-      gotResult = true;
-      this._clearSttTimeout();
-      const results = [];
+      // Interim results (실시간)
       for (let i = 0; i < event.results.length; i++) {
-        for (let j = 0; j < event.results[i].length; j++) {
-          results.push(event.results[i][j].transcript.toLowerCase().trim());
+        if (!event.results[i].isFinal && onInterim) {
+          const interim = event.results[i][0].transcript.toLowerCase().trim();
+          onInterim(interim);
         }
       }
-      if (onResult) onResult(results);
+
+      // Final results (최종)
+      if (event.results[event.results.length - 1].isFinal) {
+        gotResult = true;
+        this._clearSttTimeout();
+        const results = [];
+        for (let i = 0; i < event.results.length; i++) {
+          for (let j = 0; j < event.results[i].length; j++) {
+            results.push(event.results[i][j].transcript.toLowerCase().trim());
+          }
+        }
+        if (onResult) onResult(results);
+      }
     };
 
     this._recognition.onerror = (event) => {
@@ -368,7 +379,12 @@ class QuizManager {
           this.questionEl.innerHTML = `<span class="quiz-korean">${quiz.korean}</span><br>영어로 뭐라고 할까요?`;
           break;
         case 'listen_and_repeat':
-          this.questionEl.innerHTML = `잘 듣고 따라 말해보세요!<br><span class="quiz-english">${quiz.english}</span><br><span class="quiz-korean">(${quiz.korean})</span>`;
+          // 영어 텍스트를 단어별로 span으로 감싸기 (실시간 색상 변경용)
+          const words = quiz.english.split(/\s+/);
+          const wordsHtml = words.map((word, idx) =>
+            `<span class="quiz-word" data-word-index="${idx}">${word}</span>`
+          ).join(' ');
+          this.questionEl.innerHTML = `잘 듣고 따라 말해보세요!<br><span class="quiz-english">${wordsHtml}</span><br><span class="quiz-korean">(${quiz.korean})</span>`;
           break;
         case 'listen_and_choose':
           this.questionEl.innerHTML = `잘 듣고 맞는 것을 골라보세요!`;
@@ -429,6 +445,7 @@ class QuizManager {
     }
 
     this.speech.listen(
+      // Final result callback
       (results) => {
         if (this.micBtn) {
           this.micBtn.classList.remove('listening');
@@ -448,6 +465,7 @@ class QuizManager {
           }
         }
       },
+      // Error callback
       (error) => {
         if (this.micBtn) {
           this.micBtn.classList.remove('listening');
@@ -463,8 +481,42 @@ class QuizManager {
           }
           this.feedbackEl.className = 'quiz-feedback quiz-feedback-hint';
         }
+      },
+      // Interim result callback (실시간 피드백)
+      (interimText) => {
+        this._updateRecognitionProgress(interimText);
       }
     );
+  }
+
+  _updateRecognitionProgress(interimText) {
+    if (!this.currentQuiz || !this.questionEl) return;
+
+    // 정답 텍스트의 단어들
+    const correctWords = this.currentQuiz.english.toLowerCase().split(/\s+/);
+
+    // 인식된 텍스트의 단어들
+    const recognizedWords = interimText.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/);
+
+    // 각 단어 span 요소들 가져오기
+    const wordSpans = this.questionEl.querySelectorAll('.quiz-word');
+
+    // 단어별로 매칭 확인 및 색상 업데이트
+    wordSpans.forEach((span, idx) => {
+      if (idx < recognizedWords.length && idx < correctWords.length) {
+        const recognized = recognizedWords[idx].trim();
+        const correct = correctWords[idx].toLowerCase().replace(/[^\w]/g, '');
+
+        // 단어가 매칭되면 'recognized' 클래스 추가
+        if (recognized && correct.startsWith(recognized)) {
+          span.classList.add('recognized');
+        } else {
+          span.classList.remove('recognized');
+        }
+      } else {
+        span.classList.remove('recognized');
+      }
+    });
   }
 
   _checkAnswer(selectedIndex) {

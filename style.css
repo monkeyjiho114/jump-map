@@ -639,6 +639,17 @@ html, body {
   margin: 5px 0;
 }
 
+.quiz-word {
+  display: inline;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.quiz-word.recognized {
+  color: #4CAF50;
+  text-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
+  font-weight: bold;
+}
+
 .quiz-choices {
   display: flex;
   flex-direction: column;
