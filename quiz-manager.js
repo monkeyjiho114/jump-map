@@ -235,7 +235,15 @@ class QuizManager {
         this._selectedChoiceIndex = (this._selectedChoiceIndex - 1 + choiceCount) % choiceCount;
         this._updateChoiceFocus();
         soundManager.playMenuMove();
-      } else if (e.code === 'Space' || e.code === 'Enter') {
+      } else if (e.code === 'Space') {
+        // 스페이스: 다시 말하기 (음성 인식 시작)
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.speech.sttSupported) {
+          this._startListening();
+        }
+      } else if (e.code === 'Enter') {
+        // 엔터: 선택지 선택
         e.preventDefault();
         e.stopPropagation();
         if (this._choiceButtons[this._selectedChoiceIndex] && !this._choiceButtons[this._selectedChoiceIndex].disabled) {
