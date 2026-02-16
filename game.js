@@ -291,8 +291,8 @@ class Game {
     // 플랫폼 크기: 1 = 5.0배 매우 크게, 10 = 0.6배 작게
     let platformSizeMultiplier = 5.0 - (d - 1) * 0.489;
 
-    // 이동 속도: 1 = 0.15배 매우 매우 느리게, 10 = 1.5배 빠르게
-    let movingSpeedMultiplier = 0.15 + (d - 1) * 0.15;
+    // 이동 속도: 1 = 0.4배 적당히 느리게, 10 = 1.5배 빠르게
+    let movingSpeedMultiplier = 0.4 + (d - 1) * 0.122;
 
     // 소멸 플랫폼 보이는 시간: 1 = 4.0배 매우 길게, 10 = 0.7배 짧게
     let disappearVisibleMul = 4.0 - (d - 1) * 0.367;
@@ -303,7 +303,7 @@ class Game {
     // 스테이지별 추가 난이도 조절
     // 스테이지 1(인덱스 0): 2.0배 매우 쉽게, 스테이지 10(인덱스 9): 0.8배 더 어렵게
     const stageSizeMul = 2.0 - s * 0.133; // 2.0 → 0.8
-    const stageSpeedMul = 0.5 + s * 0.056; // 0.5 → 1.0
+    const stageSpeedMul = 0.7 + s * 0.033; // 0.7 → 1.0
 
     // 난이도 1-3일 때 추가 보너스 (초보자 친화)
     let beginnerBonus = 1.0;
