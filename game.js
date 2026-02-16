@@ -491,11 +491,17 @@ class Game {
       // Apply disappear timing multipliers
       if (def.timing) {
         adjustedDef.timing = { ...def.timing };
+        const originalCycle = (def.timing.visible || 1) + (def.timing.hidden || 1);
         if (def.timing.visible) {
           adjustedDef.timing.visible = def.timing.visible * multipliers.disappearVisibleMul;
         }
         if (def.timing.hidden) {
           adjustedDef.timing.hidden = def.timing.hidden * multipliers.disappearHiddenMul;
+        }
+        // offset도 사이클 비율에 맞춰 스케일링 (안 하면 높은 난이도에서 타이밍 불가능)
+        if (def.timing.offset) {
+          const newCycle = adjustedDef.timing.visible + adjustedDef.timing.hidden;
+          adjustedDef.timing.offset = def.timing.offset * (newCycle / originalCycle);
         }
       }
 
