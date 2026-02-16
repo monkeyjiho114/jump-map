@@ -249,6 +249,8 @@ class QuizManager {
     this.isActive = false;
     this.speech.stopSpeak();
     this.speech.stopListen();
+    if (this._skipBtnTimeout) { clearTimeout(this._skipBtnTimeout); this._skipBtnTimeout = null; }
+    if (this.skipBtn) this.skipBtn.style.display = 'none';
     if (this.onComplete) {
       const cb = this.onComplete;
       this.onComplete = null;
@@ -313,6 +315,8 @@ class QuizManager {
     this._choiceButtons = [];
     this.speech.stopSpeak();
     this.speech.stopListen();
+    if (this._skipBtnTimeout) { clearTimeout(this._skipBtnTimeout); this._skipBtnTimeout = null; }
+    if (this.skipBtn) this.skipBtn.style.display = 'none';
   }
 
   setQuizDifficulty(level) {
@@ -505,6 +509,15 @@ class QuizManager {
     if (this.hintEl) { this.hintEl.textContent = ''; this.hintEl.style.display = 'none'; }
     if (this.feedbackEl) { this.feedbackEl.textContent = ''; this.feedbackEl.className = 'quiz-feedback'; }
 
+    // 건너뛰기 버튼: 처음엔 숨기고, 15초 후 오류 대비용으로 표시
+    if (this.skipBtn) {
+      this.skipBtn.style.display = 'none';
+      if (this._skipBtnTimeout) clearTimeout(this._skipBtnTimeout);
+      this._skipBtnTimeout = setTimeout(() => {
+        if (this.isActive && this.skipBtn) this.skipBtn.style.display = 'block';
+      }, 15000);
+    }
+
     // TTS 설정 (난이도별)
     const ttsSettings = QUIZ_CONFIG.ttsSettings[this.quizDifficulty] || { rate: 0.85, pitch: 1.1 };
 
@@ -627,6 +640,8 @@ class QuizManager {
   _onCorrect() {
     this.isActive = false;
     this.speech.stopListen();
+    if (this._skipBtnTimeout) { clearTimeout(this._skipBtnTimeout); this._skipBtnTimeout = null; }
+    if (this.skipBtn) this.skipBtn.style.display = 'none';
 
     const settings = this.currentQuiz.settings;
 
@@ -676,6 +691,8 @@ class QuizManager {
 
     // 최대 시도 초과 → 정답 보여주고 통과
     if (this.attempts >= maxAttempts) {
+      if (this._skipBtnTimeout) { clearTimeout(this._skipBtnTimeout); this._skipBtnTimeout = null; }
+      if (this.skipBtn) this.skipBtn.style.display = 'none';
       if (this.feedbackEl) {
         this.feedbackEl.textContent = `정답은 "${this.currentQuiz.choices[this.currentQuiz.correctIndex]}" 이에요!`;
         this.feedbackEl.className = 'quiz-feedback quiz-feedback-answer';
