@@ -34,6 +34,10 @@ class Game {
     this.totalTime = 0;
     this.respawnFlashTimer = 0;
 
+    // 난이도 설정 (1~10)
+    this.gameDifficulty = 5;   // 기본 보통
+    this.quizDifficulty = 3;   // 기본 쉬운 단어
+
     // 체크포인트별 퀴즈 완료 여부 추적
     this._checkpointQuizDone = [];
 
@@ -94,6 +98,28 @@ class Game {
       soundManager.playMenuSelect();
       this._goToMenu();
     });
+
+    // Difficulty selection
+    const diffArrows = document.querySelectorAll('.diff-arrow');
+    diffArrows.forEach(arrow => {
+      arrow.addEventListener('click', () => {
+        const target = arrow.getAttribute('data-target'); // 'game' or 'quiz'
+        const dir = parseInt(arrow.getAttribute('data-dir')); // -1 or 1
+
+        if (target === 'game') {
+          this.gameDifficulty = Math.max(1, Math.min(10, this.gameDifficulty + dir));
+          this._updateDifficultyDisplay('game', this.gameDifficulty);
+        } else if (target === 'quiz') {
+          this.quizDifficulty = Math.max(1, Math.min(10, this.quizDifficulty + dir));
+          this._updateDifficultyDisplay('quiz', this.quizDifficulty);
+        }
+        soundManager.playMenuMove();
+      });
+    });
+
+    // Initialize difficulty displays
+    this._updateDifficultyDisplay('game', this.gameDifficulty);
+    this._updateDifficultyDisplay('quiz', this.quizDifficulty);
 
     // Pause button for mobile & desktop
     const pauseBtn = document.getElementById('pause-btn-touch');
@@ -178,6 +204,54 @@ class Game {
     }
   }
 
+  _updateDifficultyDisplay(target, level) {
+    const starsEl = document.getElementById(`${target}-diff-stars`);
+    const numberEl = document.getElementById(`${target}-diff-number`);
+    const descEl = document.getElementById(`${target}-diff-desc`);
+
+    if (starsEl) starsEl.textContent = '★'.repeat(level);
+    if (numberEl) numberEl.textContent = level;
+
+    if (descEl) {
+      if (target === 'game') {
+        const gameDescs = {
+          1: '아주 쉬움', 2: '매우 쉬움', 3: '쉬움', 4: '조금 쉬움', 5: '보통',
+          6: '조금 어려움', 7: '어려움', 8: '매우 어려움', 9: '아주 어려움', 10: '최고 난이도'
+        };
+        descEl.textContent = gameDescs[level] || '보통';
+      } else if (target === 'quiz') {
+        const quizDescs = {
+          1: '기초 단어', 2: '쉬운 단어', 3: '기본 단어', 4: '인사 표현', 5: '짧은 표현',
+          6: '짧은 문장', 7: '의문문', 8: '공손한 요청', 9: '복합 문장', 10: '긴 대화 문장'
+        };
+        descEl.textContent = quizDescs[level] || '기본 단어';
+      }
+    }
+  }
+
+  _getDifficultyMultipliers() {
+    const d = this.gameDifficulty;
+
+    // 플랫폼 크기: 1 = 1.5배 크게, 10 = 0.6배 작게
+    const platformSizeMultiplier = 1.5 - (d - 1) * 0.1;
+
+    // 이동 속도: 1 = 0.5배 느리게, 10 = 1.4배 빠르게
+    const movingSpeedMultiplier = 0.5 + (d - 1) * 0.1;
+
+    // 소멸 플랫폼 보이는 시간: 1 = 1.5배 길게, 10 = 0.7배 짧게
+    const disappearVisibleMul = 1.5 - (d - 1) * 0.089;
+
+    // 소멸 플랫폼 숨어있는 시간: 1 = 0.7배 짧게, 10 = 1.3배 길게
+    const disappearHiddenMul = 0.7 + (d - 1) * 0.067;
+
+    return {
+      platformSizeMultiplier,
+      movingSpeedMultiplier,
+      disappearVisibleMul,
+      disappearHiddenMul
+    };
+  }
+
   _transitionState(newState) {
     const oldState = this.state;
     this.state = newState;
@@ -252,6 +326,9 @@ class Game {
     this.characterModel = createCharacterModel(type);
     this.scene.add(this.characterModel);
 
+    // 퀴즈 난이도 설정
+    this.quizManager.setQuizDifficulty(this.quizDifficulty);
+
     this._loadLevel(0);
     this._transitionState(GameState.PLAYING);
   }
@@ -298,10 +375,39 @@ class Game {
     rimLight.position.set(-30, 20, -40);
     this.scene.add(rimLight);
 
-    // Platforms
+    // Get difficulty multipliers
+    const multipliers = this._getDifficultyMultipliers();
+
+    // Platforms (apply difficulty multipliers)
     let checkpointCount = 0;
     for (const def of levelDef.platforms) {
-      const platform = createPlatform(def);
+      // Clone platform definition and apply difficulty scaling
+      const adjustedDef = { ...def };
+
+      // Apply size multiplier
+      adjustedDef.width = def.width * multipliers.platformSizeMultiplier;
+      adjustedDef.depth = def.depth * multipliers.platformSizeMultiplier;
+
+      // Apply movement speed multiplier
+      if (def.movement) {
+        adjustedDef.movement = { ...def.movement };
+        if (def.movement.speed) {
+          adjustedDef.movement.speed = def.movement.speed * multipliers.movingSpeedMultiplier;
+        }
+      }
+
+      // Apply disappear timing multipliers
+      if (def.disappear) {
+        adjustedDef.disappear = { ...def.disappear };
+        if (def.disappear.visibleTime) {
+          adjustedDef.disappear.visibleTime = def.disappear.visibleTime * multipliers.disappearVisibleMul;
+        }
+        if (def.disappear.hiddenTime) {
+          adjustedDef.disappear.hiddenTime = def.disappear.hiddenTime * multipliers.disappearHiddenMul;
+        }
+      }
+
+      const platform = createPlatform(adjustedDef);
       platform.addToScene(this.scene);
       this.platforms.push(platform);
       if (platform.isCheckpoint) checkpointCount++;

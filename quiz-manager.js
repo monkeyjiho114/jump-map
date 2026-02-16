@@ -9,16 +9,16 @@ class SpeechManager {
     this._sttTimeout = null;
   }
 
-  speak(text, onEnd) {
+  speak(text, onEnd, rate, pitch) {
     if (!this.ttsSupported) {
       if (onEnd) onEnd();
       return;
     }
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = QUIZ_CONFIG.ttsLang;
-    utter.rate = QUIZ_CONFIG.ttsRate;
-    utter.pitch = QUIZ_CONFIG.ttsPitch;
+    utter.lang = QUIZ_CONFIG.sttLang; // ttsLang은 sttLang과 동일
+    utter.rate = rate !== undefined ? rate : 0.85;
+    utter.pitch = pitch !== undefined ? pitch : 1.1;
     utter.volume = 1.0;
     if (onEnd) utter.onend = onEnd;
     // Chrome bug: speechSynthesis can get stuck, resume it
@@ -173,8 +173,12 @@ class QuizManager {
     this.attempts = 0;
     this.quizIndex = 0;
     this.levelIndex = 0;
+    this.quizDifficulty = 3; // 기본 난이도 (1~10)
     this.onComplete = null;
     this.isActive = false;
+
+    // 랜덤 퀴즈 생성용 - 세션 내 중복 방지
+    this._usedQuizIds = new Set();
 
     // 키보드 네비게이션
     this._selectedChoiceIndex = 0;
@@ -252,14 +256,13 @@ class QuizManager {
     this.speech.stopListen();
   }
 
-  triggerQuiz(checkpointIndex, onComplete) {
-    const levelData = QUIZ_DATA.levels[this.levelIndex % QUIZ_DATA.levels.length];
-    if (!levelData || !levelData.quizzes) {
-      if (onComplete) onComplete();
-      return false;
-    }
+  setQuizDifficulty(level) {
+    this.quizDifficulty = Math.max(1, Math.min(10, level));
+  }
 
-    const quiz = levelData.quizzes[checkpointIndex % levelData.quizzes.length];
+  triggerQuiz(checkpointIndex, onComplete) {
+    // 랜덤 퀴즈 생성 (난이도별 단어 뱅크에서 선택)
+    const quiz = this._generateQuiz();
     if (!quiz) {
       if (onComplete) onComplete();
       return false;
@@ -273,6 +276,79 @@ class QuizManager {
 
     this._renderQuiz();
     return true;
+  }
+
+  _generateQuiz() {
+    const tier = this.quizDifficulty;
+    const bank = QUIZ_WORD_BANK[tier];
+    if (!bank || bank.length === 0) return null;
+
+    // 미사용 엔트리 선택 (중복 방지)
+    let available = bank.filter(e => !this._usedQuizIds.has(e.english));
+    if (available.length === 0) {
+      // 모두 사용했으면 리셋
+      this._usedQuizIds.clear();
+      available = bank;
+    }
+    const entry = available[Math.floor(Math.random() * available.length)];
+    this._usedQuizIds.add(entry.english);
+
+    // 난이도별 퀴즈 유형 확률 선택
+    const dist = QUIZ_CONFIG.typeDistribution[tier];
+    const rand = Math.random();
+    let cumulative = 0;
+    let selectedType = 'word_en_to_kr';
+    for (const [type, prob] of Object.entries(dist)) {
+      cumulative += prob;
+      if (rand <= cumulative) {
+        selectedType = type;
+        break;
+      }
+    }
+
+    // STT 미지원 시 listen_and_repeat → listen_and_choose
+    if (selectedType === 'listen_and_repeat' && !this.speech.sttSupported) {
+      selectedType = 'listen_and_choose';
+    }
+
+    // 선택지 배열 생성 (정답 + 오답 3개 랜덤 배치)
+    let choices, correctIndex;
+    if (selectedType === 'word_en_to_kr') {
+      choices = this._shuffleWithCorrect(entry.korean, entry.wrongChoices_kr);
+      correctIndex = choices.indexOf(entry.korean);
+    } else if (selectedType === 'word_kr_to_en') {
+      choices = this._shuffleWithCorrect(entry.english, entry.wrongChoices_en);
+      correctIndex = choices.indexOf(entry.english);
+    } else if (selectedType === 'listen_and_choose') {
+      const correctWithEmoji = entry.emoji + ' ' + entry.english;
+      choices = this._shuffleWithCorrect(correctWithEmoji, entry.wrongChoices_en);
+      correctIndex = choices.indexOf(correctWithEmoji);
+    } else { // listen_and_repeat
+      choices = this._shuffleWithCorrect(entry.english, entry.wrongChoices_en);
+      correctIndex = choices.indexOf(entry.english);
+    }
+
+    return {
+      id: `dynamic_${tier}_${entry.english}`,
+      type: selectedType,
+      english: entry.english,
+      korean: entry.korean,
+      emoji: entry.emoji,
+      choices: choices,
+      correctIndex: correctIndex,
+      hint: entry.hint,
+      acceptedPronunciations: entry.acceptedPronunciations,
+    };
+  }
+
+  _shuffleWithCorrect(correct, wrongs) {
+    // 정답 1개 + 오답 3개를 합쳐서 셔플
+    const all = [correct, ...wrongs.slice(0, 3)];
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [all[i], all[j]] = [all[j], all[i]];
+    }
+    return all;
   }
 
   _renderQuiz() {
@@ -329,6 +405,9 @@ class QuizManager {
     if (this.hintEl) { this.hintEl.textContent = ''; this.hintEl.style.display = 'none'; }
     if (this.feedbackEl) { this.feedbackEl.textContent = ''; this.feedbackEl.className = 'quiz-feedback'; }
 
+    // TTS 설정 (난이도별)
+    const ttsSettings = QUIZ_CONFIG.ttsSettings[this.quizDifficulty] || { rate: 0.85, pitch: 1.1 };
+
     // TTS로 영어 읽어주기 → listen_and_repeat이면 TTS 끝난 후 자동으로 듣기 시작
     const autoListen = (quiz.type === 'listen_and_repeat') && this.speech.sttSupported;
     this.speech.speak(quiz.english, () => {
@@ -338,7 +417,7 @@ class QuizManager {
           if (this.isActive) this._startListening();
         }, 300);
       }
-    });
+    }, ttsSettings.rate, ttsSettings.pitch);
   }
 
   _startListening() {
@@ -472,7 +551,8 @@ class QuizManager {
 
     // TTS로 다시 읽어주기
     setTimeout(() => {
-      this.speech.speak(this.currentQuiz.english);
+      const ttsSettings = QUIZ_CONFIG.ttsSettings[this.quizDifficulty] || { rate: 0.85, pitch: 1.1 };
+      this.speech.speak(this.currentQuiz.english, null, ttsSettings.rate, ttsSettings.pitch);
     }, QUIZ_CONFIG.wrongDelay);
   }
 }

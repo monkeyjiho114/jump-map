@@ -834,3 +834,144 @@ html, body {
     width: 80%;
   }
 }
+
+/* ============================================
+   DIFFICULTY SELECTION
+   ============================================= */
+.difficulty-section {
+  margin: 20px 0 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+}
+
+.difficulty-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.difficulty-label {
+  font-size: 1.1rem;
+  color: #FFE082;
+  min-width: 100px;
+  text-align: right;
+}
+
+.diff-arrow {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 152, 0, 0.4);
+  color: #fff;
+  font-size: 1.3rem;
+  cursor: pointer;
+  font-family: 'Jua', sans-serif;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.diff-arrow:hover {
+  background: rgba(255, 152, 0, 0.7);
+  transform: scale(1.1);
+}
+
+.diff-arrow:active {
+  transform: scale(0.95);
+}
+
+.difficulty-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 90px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 12px;
+}
+
+.difficulty-stars {
+  color: #FFD700;
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+}
+
+.difficulty-number {
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+.difficulty-desc {
+  font-size: 0.95rem;
+  color: #aaa;
+  min-width: 100px;
+  text-align: left;
+}
+
+/* Mobile landscape */
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+  .difficulty-section {
+    margin: 12px 0 15px;
+    gap: 10px;
+  }
+  .difficulty-row {
+    gap: 8px;
+  }
+  .difficulty-label {
+    font-size: 0.95rem;
+    min-width: 80px;
+  }
+  .diff-arrow {
+    width: 30px;
+    height: 30px;
+    font-size: 1.1rem;
+  }
+  .difficulty-display {
+    min-width: 70px;
+    padding: 6px 10px;
+  }
+  .difficulty-stars {
+    font-size: 0.75rem;
+  }
+  .difficulty-number {
+    font-size: 1.3rem;
+  }
+  .difficulty-desc {
+    font-size: 0.85rem;
+    min-width: 85px;
+  }
+}
+
+/* Mobile portrait */
+@media (max-width: 640px) and (orientation: portrait) {
+  .difficulty-section {
+    margin: 15px 0 20px;
+    gap: 12px;
+  }
+  .difficulty-row {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .difficulty-label {
+    font-size: 1rem;
+    min-width: 70px;
+  }
+  .diff-arrow {
+    width: 32px;
+    height: 32px;
+  }
+  .difficulty-display {
+    min-width: 75px;
+  }
+  .difficulty-desc {
+    font-size: 0.9rem;
+    min-width: 75px;
+  }
+}

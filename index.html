@@ -22,6 +22,31 @@
     <div class="screen-content">
       <h1 class="game-title">붕어빵 점프맵</h1>
       <p class="game-subtitle">Bungeoppang Jump Map</p>
+
+      <!-- Difficulty Selection -->
+      <div class="difficulty-section">
+        <div class="difficulty-row">
+          <label class="difficulty-label">게임 난이도</label>
+          <button class="diff-arrow diff-left" data-target="game" data-dir="-1">◀</button>
+          <div class="difficulty-display">
+            <span class="difficulty-stars" id="game-diff-stars">★★★★★</span>
+            <span class="difficulty-number" id="game-diff-number">5</span>
+          </div>
+          <button class="diff-arrow diff-right" data-target="game" data-dir="1">▶</button>
+          <span class="difficulty-desc" id="game-diff-desc">보통</span>
+        </div>
+        <div class="difficulty-row">
+          <label class="difficulty-label">퀴즈 난이도</label>
+          <button class="diff-arrow diff-left" data-target="quiz" data-dir="-1">◀</button>
+          <div class="difficulty-display">
+            <span class="difficulty-stars" id="quiz-diff-stars">★★★</span>
+            <span class="difficulty-number" id="quiz-diff-number">3</span>
+          </div>
+          <button class="diff-arrow diff-right" data-target="quiz" data-dir="1">▶</button>
+          <span class="difficulty-desc" id="quiz-diff-desc">기본 단어</span>
+        </div>
+      </div>
+
       <button id="start-btn" class="btn btn-primary">게임 시작</button>
       <div class="controls-hint">
         <p>방향키 이동 | Space 점프 | 마우스 카메라</p>
