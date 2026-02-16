@@ -317,11 +317,17 @@ class Game {
     disappearVisibleMul *= (1.0 + (2.0 - stageSizeMul)); // 초반 스테이지는 더 오래 보임
     disappearHiddenMul *= stageSpeedMul; // 초반 스테이지는 빨리 다시 나타남
 
+    // 플랫폼 간 거리 조절: 1 = 0.4배 (매우 가까이), 10 = 1.0배 (원래 거리)
+    let platformPositionScale = 0.4 + (d - 1) * 0.067;
+    // 스테이지별 추가 조정: 초반 스테이지는 더 가까이
+    platformPositionScale *= (0.7 + s * 0.033); // 0.7 → 1.0
+
     return {
       platformSizeMultiplier,
       movingSpeedMultiplier,
       disappearVisibleMul,
-      disappearHiddenMul
+      disappearHiddenMul,
+      platformPositionScale
     };
   }
 
@@ -459,9 +465,19 @@ class Game {
       // Clone platform definition and apply difficulty scaling
       const adjustedDef = { ...def };
 
-      // Apply size multiplier
-      adjustedDef.width = def.width * multipliers.platformSizeMultiplier;
-      adjustedDef.depth = def.depth * multipliers.platformSizeMultiplier;
+      // Apply size multiplier (size: [width, height, depth])
+      adjustedDef.size = [
+        def.size[0] * multipliers.platformSizeMultiplier,  // width
+        def.size[1],                                       // height (유지)
+        def.size[2] * multipliers.platformSizeMultiplier   // depth
+      ];
+
+      // Apply position scaling (pos: [x, y, z]) - 플랫폼 간 거리 조절
+      adjustedDef.pos = [
+        def.pos[0] * multipliers.platformPositionScale,    // x
+        def.pos[1] * multipliers.platformPositionScale,    // y
+        def.pos[2] * multipliers.platformPositionScale     // z
+      ];
 
       // Apply movement speed multiplier
       if (def.movement) {
@@ -472,13 +488,13 @@ class Game {
       }
 
       // Apply disappear timing multipliers
-      if (def.disappear) {
-        adjustedDef.disappear = { ...def.disappear };
-        if (def.disappear.visibleTime) {
-          adjustedDef.disappear.visibleTime = def.disappear.visibleTime * multipliers.disappearVisibleMul;
+      if (def.timing) {
+        adjustedDef.timing = { ...def.timing };
+        if (def.timing.visible) {
+          adjustedDef.timing.visible = def.timing.visible * multipliers.disappearVisibleMul;
         }
-        if (def.disappear.hiddenTime) {
-          adjustedDef.disappear.hiddenTime = def.disappear.hiddenTime * multipliers.disappearHiddenMul;
+        if (def.timing.hidden) {
+          adjustedDef.timing.hidden = def.timing.hidden * multipliers.disappearHiddenMul;
         }
       }
 
