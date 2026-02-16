@@ -29,6 +29,7 @@ const CONFIG = {
 };
 
 const GameState = {
+  AUTH: 'auth',
   TITLE: 'title',
   CHARACTER_SELECT: 'character_select',
   PLAYING: 'playing',
@@ -37,6 +38,7 @@ const GameState = {
   GAME_OVER: 'game_over',
   STAGE_CLEAR: 'stage_clear',
   ALL_CLEAR: 'all_clear',
+  LEADERBOARD: 'leaderboard',
 };
 
 // ============================================

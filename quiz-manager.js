@@ -246,6 +246,7 @@ class QuizManager {
 
   forceComplete() {
     if (!this.currentQuiz && !this.onComplete) return;
+    this._reportQuizResult(false, this.attempts, 'skip');
     this.isActive = false;
     this.speech.stopSpeak();
     this.speech.stopListen();
@@ -642,6 +643,7 @@ class QuizManager {
     this.speech.stopListen();
     if (this._skipBtnTimeout) { clearTimeout(this._skipBtnTimeout); this._skipBtnTimeout = null; }
     if (this.skipBtn) this.skipBtn.style.display = 'none';
+    this._reportQuizResult(true, this.attempts, 'choice');
 
     const settings = this.currentQuiz.settings;
 
@@ -693,6 +695,7 @@ class QuizManager {
     if (this.attempts >= maxAttempts) {
       if (this._skipBtnTimeout) { clearTimeout(this._skipBtnTimeout); this._skipBtnTimeout = null; }
       if (this.skipBtn) this.skipBtn.style.display = 'none';
+      this._reportQuizResult(false, this.attempts, 'choice');
       if (this.feedbackEl) {
         this.feedbackEl.textContent = `정답은 "${this.currentQuiz.choices[this.currentQuiz.correctIndex]}" 이에요!`;
         this.feedbackEl.className = 'quiz-feedback quiz-feedback-answer';
@@ -740,5 +743,24 @@ class QuizManager {
       const ttsSettings = QUIZ_CONFIG.ttsSettings[this.quizDifficulty] || { rate: 0.85, pitch: 1.1 };
       this.speech.speak(this.currentQuiz.english, null, ttsSettings.rate, ttsSettings.pitch);
     }, QUIZ_CONFIG.wrongDelay);
+  }
+
+  _reportQuizResult(isCorrect, attempts, answeredVia) {
+    if (!window.supabaseManager || !supabaseManager.isLoggedIn()) return;
+    if (!this.currentQuiz) return;
+    try {
+      supabaseManager.saveQuizResult({
+        level_index: this.levelIndex,
+        checkpoint_index: this.quizIndex,
+        quiz_difficulty: this.quizDifficulty,
+        quiz_type: this.currentQuiz.type || '',
+        quiz_word: this.currentQuiz.english || '',
+        is_correct: isCorrect,
+        attempts: attempts,
+        answered_via: answeredVia,
+      });
+    } catch (e) {
+      // Silent fail for analytics
+    }
   }
 }

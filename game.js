@@ -43,7 +43,12 @@ class Game {
     // 체크포인트별 퀴즈 완료 여부 추적
     this._checkpointQuizDone = [];
 
-    this.state = GameState.TITLE;
+    // Auth state
+    this.isGuest = false;
+    this.userProfile = null;
+    this._savedProgress = null;
+
+    this.state = GameState.AUTH;
     this.clock = new THREE.Clock();
     this.gameTime = 0;
 
@@ -52,7 +57,8 @@ class Game {
 
     window.addEventListener('resize', () => this._onResize());
     this._setupUI();
-    this._transitionState(GameState.TITLE);
+    this._setupAuthUI();
+    this._initAuth();
     this._animate();
   }
 
@@ -116,6 +122,7 @@ class Game {
           this._updateDifficultyDisplay('quiz', this.quizDifficulty);
         }
         soundManager.playMenuMove();
+        this._savePreferences();
       });
     });
 
@@ -224,17 +231,311 @@ class Game {
     });
   }
 
+  // ============================================
+  // AUTH SYSTEM
+  // ============================================
+  _setupAuthUI() {
+    const showMsg = (msg, type) => {
+      const el = document.getElementById('auth-message');
+      if (el) { el.textContent = msg; el.className = 'auth-message ' + (type || ''); }
+    };
+    const clearMsg = () => showMsg('', '');
+
+    // Toggle login/register
+    document.getElementById('auth-show-register').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('auth-login').style.display = 'none';
+      document.getElementById('auth-register').style.display = 'flex';
+      clearMsg();
+    });
+    document.getElementById('auth-show-login').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('auth-register').style.display = 'none';
+      document.getElementById('auth-login').style.display = 'flex';
+      clearMsg();
+    });
+
+    // Login
+    document.getElementById('auth-login-btn').addEventListener('click', async () => {
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      if (!email || !password) { showMsg('이메일과 비밀번호를 입력하세요.', 'error'); return; }
+      try {
+        showMsg('로그인 중...', '');
+        await supabaseManager.signIn(email, password);
+      } catch (e) {
+        showMsg(e.message || '로그인 실패', 'error');
+      }
+    });
+
+    // Google
+    document.getElementById('auth-google-btn').addEventListener('click', async () => {
+      try {
+        await supabaseManager.signInWithGoogle();
+      } catch (e) {
+        showMsg(e.message || 'Google 로그인 실패', 'error');
+      }
+    });
+
+    // Register
+    document.getElementById('auth-register-btn').addEventListener('click', async () => {
+      const name = document.getElementById('auth-reg-name').value.trim();
+      const email = document.getElementById('auth-reg-email').value.trim();
+      const password = document.getElementById('auth-reg-password').value;
+      if (!email || !password) { showMsg('이메일과 비밀번호를 입력하세요.', 'error'); return; }
+      if (password.length < 6) { showMsg('비밀번호는 6자 이상이어야 합니다.', 'error'); return; }
+      try {
+        showMsg('회원가입 중...', '');
+        await supabaseManager.signUp(email, password, name);
+        showMsg('가입 완료! 이메일을 확인해주세요.', 'success');
+      } catch (e) {
+        showMsg(e.message || '회원가입 실패', 'error');
+      }
+    });
+
+    // Guest
+    document.getElementById('auth-guest-btn').addEventListener('click', () => {
+      soundManager.init();
+      this.isGuest = true;
+      this._transitionState(GameState.TITLE);
+    });
+
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      try {
+        await supabaseManager.signOut();
+        this.isGuest = false;
+        this.userProfile = null;
+        this._savedProgress = null;
+        this._updateUserInfoBar();
+        this._transitionState(GameState.AUTH);
+      } catch (e) {
+        showToast('로그아웃 실패', 'error');
+      }
+    });
+
+    // Leaderboard
+    document.getElementById('leaderboard-btn').addEventListener('click', () => {
+      soundManager.playMenuSelect();
+      this._transitionState(GameState.LEADERBOARD);
+      this._loadLeaderboard();
+    });
+    document.getElementById('leaderboard-close-btn').addEventListener('click', () => {
+      soundManager.playMenuSelect();
+      this._transitionState(GameState.TITLE);
+    });
+
+    // Continue button
+    document.getElementById('continue-btn').addEventListener('click', () => {
+      soundManager.init();
+      soundManager.playMenuSelect();
+      this._continueFromSave();
+    });
+  }
+
+  async _initAuth() {
+    // Check if we have an existing session (e.g. after OAuth redirect)
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      if (data.session) {
+        this.currentUser = data.session.user;
+        await this._onSignedIn();
+        return;
+      }
+    } catch (e) {
+      console.warn('Session check failed:', e);
+    }
+
+    // Listen for future auth changes
+    supabaseManager.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        await this._onSignedIn();
+      }
+    });
+
+    // Show auth screen
+    this._transitionState(GameState.AUTH);
+  }
+
+  async _onSignedIn() {
+    this.isGuest = false;
+    try {
+      this.userProfile = await supabaseManager.getProfile();
+      if (this.userProfile) {
+        if (this.userProfile.character_type) this.characterType = this.userProfile.character_type;
+        if (this.userProfile.game_difficulty) {
+          this.gameDifficulty = this.userProfile.game_difficulty;
+          this._updateDifficultyDisplay('game', this.gameDifficulty);
+        }
+        if (this.userProfile.quiz_difficulty) {
+          this.quizDifficulty = this.userProfile.quiz_difficulty;
+          this._updateDifficultyDisplay('quiz', this.quizDifficulty);
+        }
+      }
+      // Load saved progress
+      this._savedProgress = await supabaseManager.loadProgress();
+    } catch (e) {
+      console.warn('Profile/progress load failed:', e);
+    }
+    this._updateUserInfoBar();
+    this._updateContinueButton();
+    this._transitionState(GameState.TITLE);
+  }
+
+  _updateUserInfoBar() {
+    const bar = document.getElementById('user-info-bar');
+    const nameEl = document.getElementById('user-display-name');
+    if (!bar || !nameEl) return;
+
+    if (!this.isGuest && supabaseManager.isLoggedIn()) {
+      const name = this.userProfile?.display_name ||
+        supabaseManager.currentUser?.email?.split('@')[0] || 'Player';
+      nameEl.textContent = name;
+      bar.style.display = 'flex';
+    } else if (this.isGuest) {
+      nameEl.textContent = '게스트';
+      bar.style.display = 'flex';
+      document.getElementById('logout-btn').textContent = '로그인';
+      document.getElementById('logout-btn').onclick = () => {
+        this.isGuest = false;
+        this._transitionState(GameState.AUTH);
+      };
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+
+  _updateContinueButton() {
+    const btn = document.getElementById('continue-btn');
+    if (!btn) return;
+    if (this._savedProgress && !this._savedProgress.is_completed && this._savedProgress.current_level_index > 0) {
+      btn.style.display = 'block';
+      btn.textContent = '이어하기 (스테이지 ' + (this._savedProgress.current_level_index + 1) + ')';
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
+  async _continueFromSave() {
+    if (!this._savedProgress) return;
+    const save = this._savedProgress;
+
+    this.gameDifficulty = save.game_difficulty || 5;
+    this.quizDifficulty = save.quiz_difficulty || 3;
+    this.characterType = save.character_type || 'pig';
+    this.totalDeaths = save.total_deaths || 0;
+    this.totalTime = save.total_time || 0;
+    this.collectedIngredients = save.collected_ingredients || [];
+
+    this._updateDifficultyDisplay('game', this.gameDifficulty);
+    this._updateDifficultyDisplay('quiz', this.quizDifficulty);
+
+    if (this.characterModel) this.scene.remove(this.characterModel);
+    this.characterModel = createCharacterModel(this.characterType);
+    this.scene.add(this.characterModel);
+    this.quizManager.setQuizDifficulty(this.quizDifficulty);
+
+    this._loadLevel(save.current_level_index);
+    this._transitionState(GameState.PLAYING);
+  }
+
+  // ============================================
+  // SAVE / LOAD / LEADERBOARD
+  // ============================================
+  async _autoSaveProgress() {
+    if (this.isGuest || !supabaseManager || !supabaseManager.isLoggedIn()) return;
+    try {
+      await supabaseManager.saveProgress({
+        current_level_index: this.currentLevelIndex + 1,
+        collected_ingredients: this.collectedIngredients,
+        total_deaths: this.totalDeaths + this.hud.deaths,
+        total_time: this.totalTime + this.hud.elapsed,
+        game_difficulty: this.gameDifficulty,
+        quiz_difficulty: this.quizDifficulty,
+        character_type: this.characterType,
+        is_completed: false,
+      });
+    } catch (e) {
+      console.warn('Auto-save failed:', e);
+    }
+  }
+
+  async _submitLeaderboardEntry() {
+    if (this.isGuest || !supabaseManager || !supabaseManager.isLoggedIn()) return;
+    try {
+      await supabaseManager.submitScore({
+        character_type: this.characterType,
+        game_difficulty: this.gameDifficulty,
+        quiz_difficulty: this.quizDifficulty,
+        total_time: this.totalTime,
+        total_deaths: this.totalDeaths,
+      });
+      await supabaseManager.saveProgress({
+        current_level_index: 9,
+        collected_ingredients: this.collectedIngredients,
+        total_deaths: this.totalDeaths,
+        total_time: this.totalTime,
+        game_difficulty: this.gameDifficulty,
+        quiz_difficulty: this.quizDifficulty,
+        character_type: this.characterType,
+        is_completed: true,
+      });
+      showToast('리더보드에 기록이 등록되었습니다!', 'success');
+    } catch (e) {
+      console.warn('Leaderboard submission failed:', e);
+    }
+  }
+
+  async _loadLeaderboard() {
+    const tbody = document.getElementById('leaderboard-body');
+    const loading = document.getElementById('leaderboard-loading');
+    const empty = document.getElementById('leaderboard-empty');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    loading.style.display = 'block';
+    empty.style.display = 'none';
+
+    const { data, error } = await supabaseManager.getLeaderboard(50);
+    loading.style.display = 'none';
+
+    if (error || !data || data.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    const currentUserId = supabaseManager.currentUser?.id;
+    data.forEach(entry => {
+      const tr = document.createElement('tr');
+      if (entry.user_id === currentUserId) tr.classList.add('leaderboard-my-row');
+      const charName = entry.character_type === 'pig' ? '돼지' : '원숭이';
+      const mins = Math.floor(entry.total_time / 60);
+      const secs = (entry.total_time % 60).toFixed(1);
+      const timeStr = mins > 0 ? mins + ':' + secs.padStart(4, '0') : secs + 's';
+      tr.innerHTML =
+        '<td>' + entry.rank + '</td>' +
+        '<td>' + escapeHtml(entry.display_name || 'Player') + '</td>' +
+        '<td>' + charName + '</td>' +
+        '<td>' + entry.game_difficulty + '/' + entry.quiz_difficulty + '</td>' +
+        '<td>' + timeStr + '</td>' +
+        '<td>' + entry.total_deaths + '</td>' +
+        '<td>' + entry.score.toFixed(1) + '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
   _updateMenuButtons() {
     const buttonMap = {
-      [GameState.TITLE]: ['start-btn'],
+      [GameState.AUTH]: ['auth-login-btn', 'auth-google-btn', 'auth-guest-btn'],
+      [GameState.TITLE]: ['start-btn', 'continue-btn', 'leaderboard-btn'],
       [GameState.CHARACTER_SELECT]: ['pig-btn', 'monkey-btn'],
       [GameState.PAUSED]: ['resume-btn', 'restart-btn', 'menu-btn'],
       [GameState.GAME_OVER]: ['retry-btn'],
       [GameState.STAGE_CLEAR]: ['next-stage-btn'],
       [GameState.ALL_CLEAR]: ['all-clear-menu-btn'],
+      [GameState.LEADERBOARD]: ['leaderboard-close-btn'],
     };
     const ids = buttonMap[this.state] || [];
-    this._menuButtons = ids.map(id => document.getElementById(id)).filter(Boolean);
+    this._menuButtons = ids.map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none');
     this._menuIndex = 0;
     this._updateMenuFocus();
   }
@@ -327,6 +628,7 @@ class Game {
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
 
     const screenMap = {
+      [GameState.AUTH]: 'auth-screen',
       [GameState.TITLE]: 'title-screen',
       [GameState.CHARACTER_SELECT]: 'character-select',
       [GameState.PAUSED]: 'pause-menu',
@@ -334,6 +636,7 @@ class Game {
       [GameState.STAGE_CLEAR]: 'stage-clear',
       [GameState.ALL_CLEAR]: 'all-clear',
       [GameState.QUIZ]: 'quiz-screen',
+      [GameState.LEADERBOARD]: 'leaderboard-screen',
     };
 
     if (screenMap[newState]) {
@@ -380,6 +683,7 @@ class Game {
       this._updateIngredientUI('stage-clear-ingredients', this.collectedIngredients);
       soundManager.playClear();
       soundManager.stopBGM();
+      this._autoSaveProgress();
     }
 
     if (newState === GameState.ALL_CLEAR) {
@@ -388,6 +692,7 @@ class Game {
       this._updateIngredientUI('all-clear-ingredients', this.collectedIngredients);
       soundManager.playClear();
       soundManager.stopBGM();
+      this._submitLeaderboardEntry();
     }
 
     if (newState === GameState.TITLE) {
@@ -399,11 +704,24 @@ class Game {
     this._updateMenuButtons();
   }
 
+  _savePreferences() {
+    if (!this.isGuest && supabaseManager && supabaseManager.isLoggedIn()) {
+      supabaseManager.updateProfile({
+        game_difficulty: this.gameDifficulty,
+        quiz_difficulty: this.quizDifficulty,
+      });
+    }
+  }
+
   _selectCharacter(type) {
     this.characterType = type;
     this.totalDeaths = 0;
     this.totalTime = 0;
     this.collectedIngredients = [];
+
+    if (!this.isGuest && supabaseManager && supabaseManager.isLoggedIn()) {
+      supabaseManager.updateProfile({ character_type: type });
+    }
 
     if (this.characterModel) this.scene.remove(this.characterModel);
     this.characterModel = createCharacterModel(type);
@@ -592,6 +910,7 @@ class Game {
     this.clouds = [];
     this.envObjects = [];
     soundManager.stopBGM();
+    this._updateContinueButton();
     this._transitionState(GameState.TITLE);
   }
 
