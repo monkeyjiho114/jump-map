@@ -288,46 +288,34 @@ class Game {
     const s = stageIndex; // 0~9
 
     // 게임 난이도에 따른 배율
-    // 플랫폼 크기: 1 = 5.0배 매우 크게, 10 = 0.6배 작게
-    let platformSizeMultiplier = 5.0 - (d - 1) * 0.489;
+    // 플랫폼 크기: 1 = 2.0배 크게, 10 = 0.7배 작게
+    let platformSizeMultiplier = 2.0 - (d - 1) * 0.144;
 
-    // 이동 속도: 1 = 0.4배 적당히 느리게, 10 = 1.5배 빠르게
-    let movingSpeedMultiplier = 0.4 + (d - 1) * 0.122;
+    // 이동 속도: 1 = 0.5배 느리게, 10 = 1.5배 빠르게
+    let movingSpeedMultiplier = 0.5 + (d - 1) * 0.111;
 
-    // 소멸 플랫폼 보이는 시간: 1 = 4.0배 매우 길게, 10 = 0.7배 짧게
-    let disappearVisibleMul = 4.0 - (d - 1) * 0.367;
+    // 소멸 플랫폼 보이는 시간: 1 = 3.0배 길게, 10 = 0.8배 짧게
+    let disappearVisibleMul = 3.0 - (d - 1) * 0.244;
 
-    // 소멸 플랫폼 숨어있는 시간: 1 = 0.2배 매우 매우 짧게, 10 = 1.5배 길게
-    let disappearHiddenMul = 0.2 + (d - 1) * 0.144;
+    // 소멸 플랫폼 숨어있는 시간: 1 = 0.5배 짧게, 10 = 1.5배 길게
+    let disappearHiddenMul = 0.5 + (d - 1) * 0.111;
 
     // 스테이지별 추가 난이도 조절
-    // 스테이지 1(인덱스 0): 2.0배 매우 쉽게, 스테이지 10(인덱스 9): 0.8배 더 어렵게
-    const stageSizeMul = 2.0 - s * 0.133; // 2.0 → 0.8
-    const stageSpeedMul = 0.7 + s * 0.033; // 0.7 → 1.0
-
-    // 난이도 1-3일 때 추가 보너스 (초보자 친화)
-    let beginnerBonus = 1.0;
-    if (d === 1) beginnerBonus = 1.8;
-    else if (d === 2) beginnerBonus = 1.5;
-    else if (d === 3) beginnerBonus = 1.3;
+    // 스테이지 1(인덱스 0): 1.3배 쉽게, 스테이지 10(인덱스 9): 0.9배 어렵게
+    const stageSizeMul = 1.3 - s * 0.044; // 1.3 → 0.9
+    const stageSpeedMul = 0.8 + s * 0.022; // 0.8 → 1.0
 
     // 스테이지 배율 적용
-    platformSizeMultiplier *= stageSizeMul * beginnerBonus;
+    platformSizeMultiplier *= stageSizeMul;
     movingSpeedMultiplier *= stageSpeedMul;
-    disappearVisibleMul *= (1.0 + (2.0 - stageSizeMul)); // 초반 스테이지는 더 오래 보임
+    disappearVisibleMul *= (1.0 + (stageSizeMul - 1.0) * 0.5); // 초반 스테이지는 조금 더 오래 보임
     disappearHiddenMul *= stageSpeedMul; // 초반 스테이지는 빨리 다시 나타남
-
-    // 플랫폼 간 거리 조절: 1 = 0.4배 (매우 가까이), 10 = 1.0배 (원래 거리)
-    let platformPositionScale = 0.4 + (d - 1) * 0.067;
-    // 스테이지별 추가 조정: 초반 스테이지는 더 가까이
-    platformPositionScale *= (0.7 + s * 0.033); // 0.7 → 1.0
 
     return {
       platformSizeMultiplier,
       movingSpeedMultiplier,
       disappearVisibleMul,
-      disappearHiddenMul,
-      platformPositionScale
+      disappearHiddenMul
     };
   }
 
@@ -466,17 +454,11 @@ class Game {
       const adjustedDef = { ...def };
 
       // Apply size multiplier (size: [width, height, depth])
+      // 플랫폼이 커지면 자동으로 간격이 좁아지는 효과
       adjustedDef.size = [
         def.size[0] * multipliers.platformSizeMultiplier,  // width
         def.size[1],                                       // height (유지)
         def.size[2] * multipliers.platformSizeMultiplier   // depth
-      ];
-
-      // Apply position scaling (pos: [x, y, z]) - 플랫폼 간 거리 조절
-      adjustedDef.pos = [
-        def.pos[0] * multipliers.platformPositionScale,    // x
-        def.pos[1] * multipliers.platformPositionScale,    // y
-        def.pos[2] * multipliers.platformPositionScale     // z
       ];
 
       // Apply movement speed multiplier
