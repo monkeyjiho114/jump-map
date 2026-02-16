@@ -288,27 +288,33 @@ class Game {
     const s = stageIndex; // 0~9
 
     // 게임 난이도에 따른 배율
-    // 플랫폼 크기: 1 = 2.5배 크게, 10 = 0.6배 작게
-    let platformSizeMultiplier = 2.5 - (d - 1) * 0.211;
+    // 플랫폼 크기: 1 = 5.0배 매우 크게, 10 = 0.6배 작게
+    let platformSizeMultiplier = 5.0 - (d - 1) * 0.489;
 
-    // 이동 속도: 1 = 0.2배 매우 느리게, 10 = 1.5배 빠르게
-    let movingSpeedMultiplier = 0.2 + (d - 1) * 0.144;
+    // 이동 속도: 1 = 0.15배 매우 매우 느리게, 10 = 1.5배 빠르게
+    let movingSpeedMultiplier = 0.15 + (d - 1) * 0.15;
 
-    // 소멸 플랫폼 보이는 시간: 1 = 3.0배 매우 길게, 10 = 0.7배 짧게
-    let disappearVisibleMul = 3.0 - (d - 1) * 0.256;
+    // 소멸 플랫폼 보이는 시간: 1 = 4.0배 매우 길게, 10 = 0.7배 짧게
+    let disappearVisibleMul = 4.0 - (d - 1) * 0.367;
 
-    // 소멸 플랫폼 숨어있는 시간: 1 = 0.3배 매우 짧게, 10 = 1.5배 길게
-    let disappearHiddenMul = 0.3 + (d - 1) * 0.133;
+    // 소멸 플랫폼 숨어있는 시간: 1 = 0.2배 매우 매우 짧게, 10 = 1.5배 길게
+    let disappearHiddenMul = 0.2 + (d - 1) * 0.144;
 
     // 스테이지별 추가 난이도 조절
-    // 스테이지 1(인덱스 0): 1.3배 더 쉽게, 스테이지 10(인덱스 9): 0.85배 더 어렵게
-    const stageSizeMul = 1.3 - s * 0.05; // 1.3 → 0.85
-    const stageSpeedMul = 0.7 + s * 0.033; // 0.7 → 1.0
+    // 스테이지 1(인덱스 0): 2.0배 매우 쉽게, 스테이지 10(인덱스 9): 0.8배 더 어렵게
+    const stageSizeMul = 2.0 - s * 0.133; // 2.0 → 0.8
+    const stageSpeedMul = 0.5 + s * 0.056; // 0.5 → 1.0
+
+    // 난이도 1-3일 때 추가 보너스 (초보자 친화)
+    let beginnerBonus = 1.0;
+    if (d === 1) beginnerBonus = 1.8;
+    else if (d === 2) beginnerBonus = 1.5;
+    else if (d === 3) beginnerBonus = 1.3;
 
     // 스테이지 배율 적용
-    platformSizeMultiplier *= stageSizeMul;
+    platformSizeMultiplier *= stageSizeMul * beginnerBonus;
     movingSpeedMultiplier *= stageSpeedMul;
-    disappearVisibleMul *= (1.0 + (1.3 - stageSizeMul)); // 초반 스테이지는 더 오래 보임
+    disappearVisibleMul *= (1.0 + (2.0 - stageSizeMul)); // 초반 스테이지는 더 오래 보임
     disappearHiddenMul *= stageSpeedMul; // 초반 스테이지는 빨리 다시 나타남
 
     return {
