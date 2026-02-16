@@ -283,20 +283,33 @@ class Game {
     });
   }
 
-  _getDifficultyMultipliers() {
+  _getDifficultyMultipliers(stageIndex) {
     const d = this.gameDifficulty;
+    const s = stageIndex; // 0~9
 
-    // 플랫폼 크기: 1 = 1.5배 크게, 10 = 0.6배 작게
-    const platformSizeMultiplier = 1.5 - (d - 1) * 0.1;
+    // 게임 난이도에 따른 배율
+    // 플랫폼 크기: 1 = 2.5배 크게, 10 = 0.6배 작게
+    let platformSizeMultiplier = 2.5 - (d - 1) * 0.211;
 
-    // 이동 속도: 1 = 0.5배 느리게, 10 = 1.4배 빠르게
-    const movingSpeedMultiplier = 0.5 + (d - 1) * 0.1;
+    // 이동 속도: 1 = 0.2배 매우 느리게, 10 = 1.5배 빠르게
+    let movingSpeedMultiplier = 0.2 + (d - 1) * 0.144;
 
-    // 소멸 플랫폼 보이는 시간: 1 = 1.5배 길게, 10 = 0.7배 짧게
-    const disappearVisibleMul = 1.5 - (d - 1) * 0.089;
+    // 소멸 플랫폼 보이는 시간: 1 = 3.0배 매우 길게, 10 = 0.7배 짧게
+    let disappearVisibleMul = 3.0 - (d - 1) * 0.256;
 
-    // 소멸 플랫폼 숨어있는 시간: 1 = 0.7배 짧게, 10 = 1.3배 길게
-    const disappearHiddenMul = 0.7 + (d - 1) * 0.067;
+    // 소멸 플랫폼 숨어있는 시간: 1 = 0.3배 매우 짧게, 10 = 1.5배 길게
+    let disappearHiddenMul = 0.3 + (d - 1) * 0.133;
+
+    // 스테이지별 추가 난이도 조절
+    // 스테이지 1(인덱스 0): 1.3배 더 쉽게, 스테이지 10(인덱스 9): 0.85배 더 어렵게
+    const stageSizeMul = 1.3 - s * 0.05; // 1.3 → 0.85
+    const stageSpeedMul = 0.7 + s * 0.033; // 0.7 → 1.0
+
+    // 스테이지 배율 적용
+    platformSizeMultiplier *= stageSizeMul;
+    movingSpeedMultiplier *= stageSpeedMul;
+    disappearVisibleMul *= (1.0 + (1.3 - stageSizeMul)); // 초반 스테이지는 더 오래 보임
+    disappearHiddenMul *= stageSpeedMul; // 초반 스테이지는 빨리 다시 나타남
 
     return {
       platformSizeMultiplier,
@@ -431,8 +444,8 @@ class Game {
     rimLight.position.set(-30, 20, -40);
     this.scene.add(rimLight);
 
-    // Get difficulty multipliers
-    const multipliers = this._getDifficultyMultipliers();
+    // Get difficulty multipliers (게임 난이도 + 스테이지별 난이도)
+    const multipliers = this._getDifficultyMultipliers(index);
 
     // Platforms (apply difficulty multipliers)
     let checkpointCount = 0;
