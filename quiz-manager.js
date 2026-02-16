@@ -292,7 +292,8 @@ class QuizManager {
   _generateQuiz() {
     const tier = this.quizDifficulty;
     const bank = QUIZ_WORD_BANK[tier];
-    if (!bank || bank.length === 0) return null;
+    const settings = QUIZ_CONFIG.difficultySettings[tier];
+    if (!bank || bank.length === 0 || !settings) return null;
 
     // 미사용 엔트리 선택 (중복 방지)
     let available = bank.filter(e => !this._usedQuizIds.has(e.english));
@@ -304,44 +305,27 @@ class QuizManager {
     const entry = available[Math.floor(Math.random() * available.length)];
     this._usedQuizIds.add(entry.english);
 
-    // 난이도별 퀴즈 유형 확률 선택
-    const dist = QUIZ_CONFIG.typeDistribution[tier];
-    const rand = Math.random();
-    let cumulative = 0;
-    let selectedType = 'word_en_to_kr';
-    for (const [type, prob] of Object.entries(dist)) {
-      cumulative += prob;
-      if (rand <= cumulative) {
-        selectedType = type;
-        break;
-      }
-    }
+    // 난이도별 퀴즈 타입 가져오기
+    const quizType = settings.type;
 
-    // STT 미지원 시 listen_and_repeat → listen_and_choose
-    if (selectedType === 'listen_and_repeat' && !this.speech.sttSupported) {
-      selectedType = 'listen_and_choose';
-    }
-
-    // 선택지 배열 생성 (정답 + 오답 3개 랜덤 배치)
+    // 선택지 배열 생성 (난이도별 개수 조절)
+    const choiceCount = settings.choiceCount;
     let choices, correctIndex;
-    if (selectedType === 'word_en_to_kr') {
-      choices = this._shuffleWithCorrect(entry.korean, entry.wrongChoices_kr);
-      correctIndex = choices.indexOf(entry.korean);
-    } else if (selectedType === 'word_kr_to_en') {
-      choices = this._shuffleWithCorrect(entry.english, entry.wrongChoices_en);
+
+    // 타입별 선택지 구성
+    if (quizType === 'exact_repeat' || quizType === 'situation_kr' || quizType === 'situation_en') {
+      // 영어 단어/문장 선택지
+      choices = this._shuffleWithCorrect(entry.english, entry.wrongChoices_en, choiceCount - 1);
       correctIndex = choices.indexOf(entry.english);
-    } else if (selectedType === 'listen_and_choose') {
-      const correctWithEmoji = entry.emoji + ' ' + entry.english;
-      choices = this._shuffleWithCorrect(correctWithEmoji, entry.wrongChoices_en);
-      correctIndex = choices.indexOf(correctWithEmoji);
-    } else { // listen_and_repeat
-      choices = this._shuffleWithCorrect(entry.english, entry.wrongChoices_en);
+    } else if (quizType === 'kr_to_en_speak') {
+      // 영어 선택지만
+      choices = this._shuffleWithCorrect(entry.english, entry.wrongChoices_en, choiceCount - 1);
       correctIndex = choices.indexOf(entry.english);
     }
 
     return {
       id: `dynamic_${tier}_${entry.english}`,
-      type: selectedType,
+      type: quizType,
       english: entry.english,
       korean: entry.korean,
       emoji: entry.emoji,
@@ -349,12 +333,14 @@ class QuizManager {
       correctIndex: correctIndex,
       hint: entry.hint,
       acceptedPronunciations: entry.acceptedPronunciations,
+      settings: settings, // 난이도별 설정 포함
     };
   }
 
-  _shuffleWithCorrect(correct, wrongs) {
-    // 정답 1개 + 오답 3개를 합쳐서 셔플
-    const all = [correct, ...wrongs.slice(0, 3)];
+  _shuffleWithCorrect(correct, wrongs, wrongCount) {
+    // 정답 1개 + 오답 n개를 합쳐서 셔플
+    const selectedWrongs = wrongs.slice(0, Math.min(wrongCount, wrongs.length));
+    const all = [correct, ...selectedWrongs];
     for (let i = all.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [all[i], all[j]] = [all[j], all[i]];
@@ -366,30 +352,54 @@ class QuizManager {
     const quiz = this.currentQuiz;
     if (!quiz || !this.screen) return;
 
+    const settings = quiz.settings;
+    if (!settings) return;
+
     // 이모지
     if (this.emojiEl) this.emojiEl.textContent = quiz.emoji;
 
-    // 질문 텍스트
+    // 질문 텍스트 (타입별 렌더링)
     if (this.questionEl) {
-      switch (quiz.type) {
-        case 'word_en_to_kr':
-          this.questionEl.innerHTML = `<span class="quiz-english">${quiz.english}</span><br>이것은 무슨 뜻일까요?`;
-          break;
-        case 'word_kr_to_en':
-          this.questionEl.innerHTML = `<span class="quiz-korean">${quiz.korean}</span><br>영어로 뭐라고 할까요?`;
-          break;
-        case 'listen_and_repeat':
-          // 영어 텍스트를 단어별로 span으로 감싸기 (실시간 색상 변경용)
-          const words = quiz.english.split(/\s+/);
-          const wordsHtml = words.map((word, idx) =>
-            `<span class="quiz-word" data-word-index="${idx}">${word}</span>`
-          ).join(' ');
-          this.questionEl.innerHTML = `잘 듣고 따라 말해보세요!<br><span class="quiz-english">${wordsHtml}</span><br><span class="quiz-korean">(${quiz.korean})</span>`;
-          break;
-        case 'listen_and_choose':
-          this.questionEl.innerHTML = `잘 듣고 맞는 것을 골라보세요!`;
-          break;
+      let questionHtml = '';
+
+      if (quiz.type === 'exact_repeat') {
+        // 따라하기: 영어 텍스트를 단어별로 span으로 감싸기 (실시간 색상 변경용)
+        const words = quiz.english.split(/\s+/);
+        const wordsHtml = words.map((word, idx) =>
+          `<span class="quiz-word" data-word-index="${idx}">${word}</span>`
+        ).join(' ');
+        questionHtml = `잘 듣고 따라 말해보세요!<br><span class="quiz-english">${wordsHtml}</span>`;
+        if (settings.showKoreanInQuestion) {
+          questionHtml += `<br><span class="quiz-korean">(${quiz.korean})</span>`;
+        }
+      } else if (quiz.type === 'kr_to_en_speak') {
+        // 한글→영어: 한글만 표시
+        questionHtml = `<span class="quiz-korean">${quiz.korean}</span><br>영어로 뭐라고 할까요?`;
+      } else if (quiz.type === 'situation_kr') {
+        // 한글 상황 설명
+        questionHtml = `<div class="quiz-situation">${quiz.korean}</div>`;
+        if (settings.showEnglishInQuestion) {
+          questionHtml += `<br><span class="quiz-english-small">예: ${quiz.english}</span>`;
+        }
+        questionHtml += `<br><span class="quiz-prompt">이 상황에 맞는 영어 표현을 말해보세요!</span>`;
+      } else if (quiz.type === 'situation_en') {
+        // 영어 상황 설명
+        questionHtml = `<div class="quiz-situation-en">${quiz.english}</div>`;
+        if (settings.showKoreanInQuestion) {
+          questionHtml += `<br><span class="quiz-korean-small">(${quiz.korean})</span>`;
+        }
+        questionHtml += `<br><span class="quiz-prompt">What would you say?</span>`;
       }
+
+      this.questionEl.innerHTML = questionHtml;
+    }
+
+    // 인식된 텍스트 표시 영역 초기화
+    this._recognizedTextEl = this.questionEl.querySelector('.recognized-text');
+    if (!this._recognizedTextEl && settings.showRecognizedText) {
+      this._recognizedTextEl = document.createElement('div');
+      this._recognizedTextEl.className = 'recognized-text';
+      this.questionEl.appendChild(this._recognizedTextEl);
     }
 
     // 선택지 버튼 생성
@@ -399,7 +409,19 @@ class QuizManager {
       quiz.choices.forEach((choice, idx) => {
         const btn = document.createElement('button');
         btn.className = 'quiz-choice-btn';
-        btn.textContent = choice;
+
+        // 선택지에 한글 표시 여부
+        if (settings.showKoreanInChoices && idx < quiz.choices.length) {
+          // 영어만 있는 경우, 해당하는 한글 찾기 (정답일 경우)
+          if (idx === quiz.correctIndex && quiz.korean) {
+            btn.innerHTML = `<span class="choice-en">${choice}</span><br><span class="choice-kr">(${quiz.korean})</span>`;
+          } else {
+            btn.textContent = choice;
+          }
+        } else {
+          btn.textContent = choice;
+        }
+
         btn.addEventListener('click', () => this._checkAnswer(idx));
         this.choicesEl.appendChild(btn);
         this._choiceButtons.push(btn);
@@ -409,9 +431,9 @@ class QuizManager {
       this._updateChoiceFocus();
     }
 
-    // 마이크 버튼: listen_and_repeat 타입 + STT 지원 시만 표시
+    // 마이크 버튼: STT 지원 시만 표시
     if (this.micBtn) {
-      const showMic = (quiz.type === 'listen_and_repeat') && this.speech.sttSupported;
+      const showMic = this.speech.sttSupported;
       this.micBtn.style.display = showMic ? 'flex' : 'none';
       this.micBtn.textContent = '🎤 말하기';
       this.micBtn.classList.remove('listening');
@@ -424,8 +446,8 @@ class QuizManager {
     // TTS 설정 (난이도별)
     const ttsSettings = QUIZ_CONFIG.ttsSettings[this.quizDifficulty] || { rate: 0.85, pitch: 1.1 };
 
-    // TTS로 영어 읽어주기 → listen_and_repeat이면 TTS 끝난 후 자동으로 듣기 시작
-    const autoListen = (quiz.type === 'listen_and_repeat') && this.speech.sttSupported;
+    // TTS로 영어 읽어주기 → 자동으로 듣기 시작
+    const autoListen = this.speech.sttSupported;
     this.speech.speak(quiz.english, () => {
       if (autoListen && this.isActive) {
         // TTS 끝나고 잠시 후 자동 듣기 시작
@@ -492,31 +514,42 @@ class QuizManager {
   _updateRecognitionProgress(interimText) {
     if (!this.currentQuiz || !this.questionEl) return;
 
-    // 정답 텍스트의 단어들
-    const correctWords = this.currentQuiz.english.toLowerCase().split(/\s+/);
+    const settings = this.currentQuiz.settings;
+    if (!settings) return;
 
-    // 인식된 텍스트의 단어들
-    const recognizedWords = interimText.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/);
+    // exact_repeat 타입: 실시간 색상 피드백
+    if (settings.useRealtimeColorFeedback && this.currentQuiz.type === 'exact_repeat') {
+      // 정답 텍스트의 단어들
+      const correctWords = this.currentQuiz.english.toLowerCase().split(/\s+/);
 
-    // 각 단어 span 요소들 가져오기
-    const wordSpans = this.questionEl.querySelectorAll('.quiz-word');
+      // 인식된 텍스트의 단어들
+      const recognizedWords = interimText.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/);
 
-    // 단어별로 매칭 확인 및 색상 업데이트
-    wordSpans.forEach((span, idx) => {
-      if (idx < recognizedWords.length && idx < correctWords.length) {
-        const recognized = recognizedWords[idx].trim();
-        const correct = correctWords[idx].toLowerCase().replace(/[^\w]/g, '');
+      // 각 단어 span 요소들 가져오기
+      const wordSpans = this.questionEl.querySelectorAll('.quiz-word');
 
-        // 단어가 매칭되면 'recognized' 클래스 추가
-        if (recognized && correct.startsWith(recognized)) {
-          span.classList.add('recognized');
+      // 단어별로 매칭 확인 및 색상 업데이트
+      wordSpans.forEach((span, idx) => {
+        if (idx < recognizedWords.length && idx < correctWords.length) {
+          const recognized = recognizedWords[idx].trim();
+          const correct = correctWords[idx].toLowerCase().replace(/[^\w]/g, '');
+
+          // 단어가 매칭되면 'recognized' 클래스 추가
+          if (recognized && correct.startsWith(recognized)) {
+            span.classList.add('recognized');
+          } else {
+            span.classList.remove('recognized');
+          }
         } else {
           span.classList.remove('recognized');
         }
-      } else {
-        span.classList.remove('recognized');
-      }
-    });
+      });
+    }
+    // 다른 타입: 인식된 텍스트 표시
+    else if (settings.showRecognizedText && this._recognizedTextEl) {
+      this._recognizedTextEl.textContent = `말하는 중: "${interimText}"`;
+      this._recognizedTextEl.style.display = 'block';
+    }
   }
 
   _checkAnswer(selectedIndex) {
@@ -533,11 +566,19 @@ class QuizManager {
     this.isActive = false;
     this.speech.stopListen();
 
-    // 정답 선택지 하이라이트
+    const settings = this.currentQuiz.settings;
+
+    // 정답 선택지 하이라이트 + 정답 후 한글 표시
     this._choiceButtons.forEach((btn, idx) => {
       btn.disabled = true;
       if (idx === this.currentQuiz.correctIndex) {
         btn.classList.add('quiz-choice-correct');
+
+        // 정답 후 한글 번역 표시
+        if (settings && settings.showKoreanAfterCorrect && this.currentQuiz.korean) {
+          const currentText = btn.textContent || btn.innerText;
+          btn.innerHTML = `<span class="choice-en">${currentText}</span><br><span class="choice-kr choice-kr-revealed">(${this.currentQuiz.korean})</span>`;
+        }
       }
     });
 
@@ -563,8 +604,12 @@ class QuizManager {
     this.attempts++;
     soundManager.playQuizWrong();
 
+    const settings = this.currentQuiz.settings;
+    const maxAttempts = settings ? settings.maxAttempts : 3;
+    const hintAfterAttempts = settings ? settings.hintAfterAttempts : 2;
+
     // 최대 시도 초과 → 정답 보여주고 통과
-    if (this.attempts >= QUIZ_CONFIG.maxAttempts) {
+    if (this.attempts >= maxAttempts) {
       if (this.feedbackEl) {
         this.feedbackEl.textContent = `정답은 "${this.currentQuiz.choices[this.currentQuiz.correctIndex]}" 이에요!`;
         this.feedbackEl.className = 'quiz-feedback quiz-feedback-answer';
@@ -574,6 +619,12 @@ class QuizManager {
         btn.disabled = true;
         if (idx === this.currentQuiz.correctIndex) {
           btn.classList.add('quiz-choice-correct');
+
+          // 정답 공개 시 한글 번역 표시
+          if (settings && settings.showKoreanAfterCorrect && this.currentQuiz.korean) {
+            const currentText = btn.textContent || btn.innerText;
+            btn.innerHTML = `<span class="choice-en">${currentText}</span><br><span class="choice-kr choice-kr-revealed">(${this.currentQuiz.korean})</span>`;
+          }
         }
       });
 
@@ -596,7 +647,7 @@ class QuizManager {
     }
 
     // 힌트 표시 (일정 횟수 이후)
-    if (this.attempts >= QUIZ_CONFIG.hintAfterAttempts && this.hintEl) {
+    if (this.attempts >= hintAfterAttempts && this.hintEl && this.currentQuiz.hint) {
       this.hintEl.textContent = '💡 힌트: ' + this.currentQuiz.hint;
       this.hintEl.style.display = 'block';
     }

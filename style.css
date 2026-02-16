@@ -650,6 +650,90 @@ html, body {
   font-weight: bold;
 }
 
+/* 인식된 텍스트 표시 */
+.recognized-text {
+  color: #4CAF50;
+  font-size: 1.3rem;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(76, 175, 80, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid #4CAF50;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* 상황 설명 스타일 */
+.quiz-situation {
+  color: #81D4FA;
+  font-size: 1.5rem;
+  line-height: 1.6;
+  padding: 12px;
+  background: rgba(129, 212, 250, 0.1);
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.quiz-situation-en {
+  color: #FFD700;
+  font-size: 1.5rem;
+  line-height: 1.6;
+  padding: 12px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.quiz-english-small {
+  color: #FFD700;
+  font-size: 1.2rem;
+  opacity: 0.8;
+}
+
+.quiz-korean-small {
+  color: #81D4FA;
+  font-size: 1.2rem;
+  opacity: 0.8;
+}
+
+.quiz-prompt {
+  color: #FF9800;
+  font-size: 1.3rem;
+  font-weight: bold;
+  display: block;
+  margin-top: 8px;
+}
+
+/* 선택지 내 영어/한글 */
+.choice-en {
+  font-size: 1.15rem;
+  color: #fff;
+  display: block;
+}
+
+.choice-kr {
+  font-size: 0.95rem;
+  color: #81D4FA;
+  opacity: 0.8;
+  display: block;
+  margin-top: 4px;
+}
+
+.choice-kr-revealed {
+  animation: fadeIn 0.5s ease;
+  opacity: 1 !important;
+  color: #4CAF50 !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .quiz-choices {
   display: flex;
   flex-direction: column;
