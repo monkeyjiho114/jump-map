@@ -321,12 +321,24 @@ class QuizManager {
     let choices, correctIndex;
 
     // 타입별 선택지 구성
-    if (quizType === 'exact_repeat' || quizType === 'situation_kr' || quizType === 'situation_en') {
-      // 영어 단어/문장 선택지
+    let correctAnswer_en, correctAnswer_kr;
+
+    if (quizType === 'situation_kr' || quizType === 'situation_en') {
+      // 상황 문제: 상황 설명(english/korean)과 정답 응답(correctAnswer_en/kr)이 분리됨
+      correctAnswer_en = entry.correctAnswer_en;
+      correctAnswer_kr = entry.correctAnswer_kr;
+      choices = this._shuffleWithCorrect(correctAnswer_en, entry.wrongChoices_en, choiceCount - 1);
+      correctIndex = choices.indexOf(correctAnswer_en);
+    } else if (quizType === 'exact_repeat') {
+      // 따라하기: english 자체가 정답
+      correctAnswer_en = entry.english;
+      correctAnswer_kr = entry.korean;
       choices = this._shuffleWithCorrect(entry.english, entry.wrongChoices_en, choiceCount - 1);
       correctIndex = choices.indexOf(entry.english);
     } else if (quizType === 'kr_to_en_speak') {
-      // 영어 선택지만
+      // 한글→영어: english가 정답
+      correctAnswer_en = entry.english;
+      correctAnswer_kr = entry.korean;
       choices = this._shuffleWithCorrect(entry.english, entry.wrongChoices_en, choiceCount - 1);
       correctIndex = choices.indexOf(entry.english);
     }
@@ -336,6 +348,8 @@ class QuizManager {
       type: quizType,
       english: entry.english,
       korean: entry.korean,
+      correctAnswer_en: correctAnswer_en, // 상황 문제용 정답
+      correctAnswer_kr: correctAnswer_kr, // 상황 문제용 정답 한글
       emoji: entry.emoji,
       choices: choices,
       correctIndex: correctIndex,
@@ -583,9 +597,13 @@ class QuizManager {
         btn.classList.add('quiz-choice-correct');
 
         // 정답 후 한글 번역 표시
-        if (settings && settings.showKoreanAfterCorrect && this.currentQuiz.korean) {
+        if (settings && settings.showKoreanAfterCorrect) {
           const currentText = btn.textContent || btn.innerText;
-          btn.innerHTML = `<span class="choice-en">${currentText}</span><br><span class="choice-kr choice-kr-revealed">(${this.currentQuiz.korean})</span>`;
+          // 상황 문제는 정답 응답의 한글(correctAnswer_kr), 아니면 일반 한글(korean) 사용
+          const koreanText = this.currentQuiz.correctAnswer_kr || this.currentQuiz.korean;
+          if (koreanText) {
+            btn.innerHTML = `<span class="choice-en">${currentText}</span><br><span class="choice-kr choice-kr-revealed">(${koreanText})</span>`;
+          }
         }
       }
     });
