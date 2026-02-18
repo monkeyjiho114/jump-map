@@ -445,16 +445,19 @@ class Game {
   async _autoSaveProgress() {
     if (this.isGuest || !supabaseManager || !supabaseManager.isLoggedIn()) return;
     try {
-      await supabaseManager.saveProgress({
+      // _checkFinish에서 이미 totalDeaths/totalTime에 hud 값을 더했으므로 그대로 사용
+      const progressData = {
         current_level_index: this.currentLevelIndex + 1,
         collected_ingredients: this.collectedIngredients,
-        total_deaths: this.totalDeaths + this.hud.deaths,
-        total_time: this.totalTime + this.hud.elapsed,
+        total_deaths: this.totalDeaths,
+        total_time: this.totalTime,
         game_difficulty: this.gameDifficulty,
         quiz_difficulty: this.quizDifficulty,
         character_type: this.characterType,
         is_completed: false,
-      });
+      };
+      await supabaseManager.saveProgress(progressData);
+      this._savedProgress = progressData;
     } catch (e) {
       console.warn('Auto-save failed:', e);
     }
@@ -463,14 +466,14 @@ class Game {
   async _submitLeaderboardEntry() {
     if (this.isGuest || !supabaseManager || !supabaseManager.isLoggedIn()) return;
     try {
-      await supabaseManager.submitScore({
+      const result = await supabaseManager.submitScore({
         character_type: this.characterType,
         game_difficulty: this.gameDifficulty,
         quiz_difficulty: this.quizDifficulty,
         total_time: this.totalTime,
         total_deaths: this.totalDeaths,
       });
-      await supabaseManager.saveProgress({
+      const progressData = {
         current_level_index: 9,
         collected_ingredients: this.collectedIngredients,
         total_deaths: this.totalDeaths,
@@ -479,10 +482,17 @@ class Game {
         quiz_difficulty: this.quizDifficulty,
         character_type: this.characterType,
         is_completed: true,
-      });
-      showToast('리더보드에 기록이 등록되었습니다!', 'success');
+      };
+      await supabaseManager.saveProgress(progressData);
+      this._savedProgress = progressData;
+      if (result) {
+        showToast('리더보드에 기록이 등록되었습니다!', 'success');
+      } else {
+        showToast('리더보드 등록에 실패했습니다. 다시 시도해주세요.', 'error');
+      }
     } catch (e) {
       console.warn('Leaderboard submission failed:', e);
+      showToast('리더보드 등록에 실패했습니다.', 'error');
     }
   }
 
@@ -898,6 +908,26 @@ class Game {
   }
 
   _goToMenu() {
+    // 중간 퇴장 시 진행상황 저장 (ALL_CLEAR는 이미 _submitLeaderboardEntry에서 저장됨)
+    if (this.state !== GameState.ALL_CLEAR && this.characterModel
+        && !this.isGuest && supabaseManager && supabaseManager.isLoggedIn()) {
+      const progressData = {
+        current_level_index: this.currentLevelIndex,
+        collected_ingredients: this.collectedIngredients,
+        total_deaths: this.totalDeaths,
+        total_time: this.totalTime,
+        game_difficulty: this.gameDifficulty,
+        quiz_difficulty: this.quizDifficulty,
+        character_type: this.characterType,
+        is_completed: false,
+      };
+      this._savedProgress = progressData;
+      supabaseManager.saveProgress(progressData).catch(e => console.warn('Menu save failed:', e));
+    } else if (this.state === GameState.ALL_CLEAR) {
+      // 비동기 _submitLeaderboardEntry가 아직 안 끝났을 수 있으므로 로컬에서 확정
+      this._savedProgress = { is_completed: true };
+    }
+
     if (this.characterModel) {
       this.scene.remove(this.characterModel);
       this.characterModel = null;

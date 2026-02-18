@@ -211,27 +211,35 @@ class SupabaseManager {
   // ---- Leaderboard ----
 
   async submitScore(scoreData) {
-    if (!this.currentUser) return null;
+    if (!this.currentUser) {
+      console.warn('Submit score: not logged in');
+      return null;
+    }
     try {
       const profile = await this.getProfile();
       const displayName = profile?.display_name || this.currentUser.email?.split('@')[0] || 'Player';
 
+      const insertData = {
+        user_id: this.currentUser.id,
+        display_name: displayName,
+        character_type: scoreData.character_type,
+        game_difficulty: scoreData.game_difficulty,
+        quiz_difficulty: scoreData.quiz_difficulty,
+        total_time: scoreData.total_time,
+        total_deaths: scoreData.total_deaths,
+      };
       const { data, error } = await supabaseClient
         .from('leaderboard_entries')
-        .insert({
-          user_id: this.currentUser.id,
-          display_name: displayName,
-          ...scoreData
-        })
+        .insert(insertData)
         .select()
         .single();
       if (error) {
-        console.warn('Submit score error:', error);
+        console.error('Submit score error:', error.message, error.details, error.code);
         return null;
       }
       return data;
     } catch (e) {
-      console.warn('Submit score failed:', e);
+      console.error('Submit score exception:', e);
       return null;
     }
   }
